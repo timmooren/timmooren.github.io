@@ -1,5 +1,5 @@
 'use strict';
-
+// console.log("Script loaded successfully!");
 
 
 // element toggle function
