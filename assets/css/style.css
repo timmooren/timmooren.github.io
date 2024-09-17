@@ -733,7 +733,7 @@ main {
 .clients-list {
   display: flex;
   justify-content: flex-start;
-  align-items: flex-start;
+  align-items: center;
   gap: 15px;
   margin: 0 -15px;
   padding: 25px;
@@ -744,7 +744,7 @@ main {
   scroll-snap-type: inline mandatory;
   scroll-padding-inline: 25px;
   /* tim */
-  height: 200px;
+  /* height: 200px; */
 }
 
 .clients-item {
@@ -760,6 +760,7 @@ main {
   object-fit: cover;
   filter: grayscale(1);
   transition: var(--transition-1);
+
 }
 
 .clients-item img:hover { filter: grayscale(0); }
