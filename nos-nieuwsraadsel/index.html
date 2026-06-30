@@ -112,9 +112,18 @@
   .clue.multi .ctext{font-size:7.6px;-webkit-line-clamp:3}
   .clue .divider{position:absolute;left:3px;right:3px;top:50%;height:1px;background:var(--antenna)}
   /* pijlen */
-  .arrow{position:absolute;color:var(--accent-deep);font-size:13px;line-height:1;z-index:2;pointer-events:none}
-  .arrow.right{right:-7px;top:50%;transform:translateY(-50%)}
-  .arrow.down{bottom:-7px;left:50%;transform:translateX(-50%)}
+  .arrow{position:absolute;width:0;height:0;z-index:2;pointer-events:none}
+  .arrow.right{right:-6px;top:50%;transform:translateY(-50%);
+    border-top:4px solid transparent;border-bottom:4px solid transparent;border-left:6px solid var(--accent-deep)}
+  .arrow.down{bottom:-6px;left:50%;transform:translateX(-50%);
+    border-left:4px solid transparent;border-right:4px solid transparent;border-top:6px solid var(--accent-deep)}
+  /* nummer in aanwijsvakje — alleen op mobiel i.p.v. de tekst */
+  .clue .cnum{position:absolute;inset:2px 3px;display:none;align-items:center;justify-content:center;
+    font-family:var(--narrow);font-weight:700;color:var(--clue-ink);font-size:calc(var(--cs)*.42);cursor:pointer}
+  @media(max-width:560px){
+    .clue .ctext{display:none}
+    .clue .cnum{display:flex}
+  }
   .clue.sel .ctext{color:var(--accent-deep)}
   .clue.sel{background:var(--active-line)}
 
@@ -203,6 +212,11 @@ board.style.gridTemplateRows=`repeat(${DATA.rows}, var(--cs))`;
 const cellMap=new Map();      // "r,c" -> celdata
 DATA.cells.forEach(c=>cellMap.set(key(c.r,c.c),c));
 
+// nummer elke aanwijzing in leesvolgorde (mobiel toont het nummer i.p.v. de tekst)
+let _clueNo=0;
+DATA.cells.filter(c=>c.type==='clue').sort((a,b)=>a.r-b.r||a.c-b.c)
+  .forEach(c=>c.clues.forEach(cl=>cl.num=++_clueNo));
+
 // woordmembership per lettercel
 const wordsAt=new Map();      // "r,c" -> [wordObj...]
 DATA.words.forEach((w,wi)=>{
@@ -241,16 +255,21 @@ function render(){
         el.classList.add('clue');
         if(d.clues.length>1) el.classList.add('multi');
         d.clues.forEach((cl,i)=>{
+          const half=d.clues.length>1?'inset:'+(i?'auto 3px 2px':'2px 3px auto')+';bottom:'+(i?2:'auto'):'';
           const t=document.createElement('div');
           t.className='ctext';
-          if(d.clues.length>1) t.style.cssText='inset:'+(i?'auto 3px 2px':'2px 3px auto')+';bottom:'+(i?2:'auto');
+          if(half) t.style.cssText=half;
           t.textContent=cl.text;
-          const ar=document.createElement('span');
+          const num=document.createElement('span');     // mobiel: nummer i.p.v. tekst
+          num.className='cnum';
+          if(half) num.style.cssText=half;
+          num.textContent=cl.num;
+          num.addEventListener('click',()=>selectClue(d,cl));
+          const ar=document.createElement('span');       // richtingspijl (CSS-driehoek)
           ar.className='arrow '+cl.arrow;
-          ar.textContent=cl.arrow==='right'?'▶':'▼';
-          t.appendChild(ar);
           t.addEventListener('click',()=>selectClue(d,cl));
           el.appendChild(t);
+          el.appendChild(num);
           el.appendChild(ar);
           if(d.clues.length>1 && i===0){const dv=document.createElement('div');dv.className='divider';el.appendChild(dv);}
         });
@@ -416,11 +435,12 @@ function buildList(){
     const dr=w.dir==='H'?0:1,dc=w.dir==='H'?1:0;
     const cd=cellMap.get(key(w.r-dr,w.c-dc));
     const cl=cd?.clues?.find(x=>wordForClue(cd,x)===w);
-    (w.dir==='H'?hor:ver).push({t:cl?cl.text:'',l:w.word.length,w});
+    (w.dir==='H'?hor:ver).push({t:cl?cl.text:'',num:cl?cl.num:0,w});
   });
+  hor.sort((a,b)=>a.num-b.num); ver.sort((a,b)=>a.num-b.num);
   const sec=(title,arr)=>{
     let h=`<div style="break-after:avoid;font-family:var(--narrow);font-weight:700;color:var(--accent-deep);margin:4px 0 6px">${title}</div>`;
-    arr.forEach(o=>{h+=`<div data-k="${o.w.cells[0]}"><span class="n">${o.l}</span>${o.t}</div>`;});
+    arr.forEach(o=>{h+=`<div data-k="${o.w.cells[0]}"><span class="n">${o.num}</span>${o.t}</div>`;});
     return h;
   };
   wrap.innerHTML=sec('→ Horizontaal',hor)+sec('↓ Verticaal',ver);
