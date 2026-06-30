@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>NOS Zweedse Puzzel · 29 juni 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;900&family=Spline+Sans+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* NOS huisstijl — overgenomen uit nos-next/design-system */
+    --page:#ffffff;          /* surface.page.default */
+    --warmgrijs:#f3f3f0;     /* foundation.nosWarmGrijs */
+    --ink:#202020;           /* foundation.blackOut — distinct tekst */
+    --ink-soft:#666666;      /* foundation.kabel */
+    --ink-faint:#888888;     /* foundation.ether */
+    --antenna:#bfbfbf;       /* foundation.antenna */
+    --rule:#dddddd;          /* foundation.ruis */
+    --rule-soft:#eeeeee;     /* foundation.radiostilte */
+    --clue-bg:#f3f3f0;       /* warmgrijs aanwijsvakje */
+    --clue-ink:#444444;      /* foundation.beeldbuis */
+    --block:#202020;         /* blackOut geblokkeerd vakje */
+    --cell:#ffffff;
+    --accent:#e61e14;        /* foundation.nosRood */
+    --accent-deep:#ca1a12;   /* foundation.nosRood100 */
+    --active:#ffc6c6;        /* nosRoodMinus400 — actieve cel */
+    --active-line:#ffe2e2;   /* nosRoodMinus500 — actief woord */
+    --sport:#284bbe;         /* foundation.sportBlauw */
+    --ok:#00c678;            /* foundation.jeugdGroen */
+    --bad:#e61e14;           /* nosRood */
+    --display:"Archivo",Helvetica,Arial,sans-serif;
+    --narrow:"Archivo",Helvetica,Arial,sans-serif;
+    --mono:"Spline Sans Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+    --body:"Helvetica Neue",Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:var(--page);
+    color:var(--ink);
+    font-family:var(--body);
+    -webkit-font-smoothing:antialiased;
+    line-height:1.4;
+    padding:18px 14px 60px;
+  }
+  .wrap{max-width:760px;margin:0 auto}
+
+  /* ---- kop ---- */
+  header{border-bottom:3px solid var(--ink);padding-bottom:10px}
+  .eyebrow{
+    display:flex;align-items:center;gap:8px;
+    font-family:var(--narrow);font-weight:700;
+    text-transform:uppercase;letter-spacing:.14em;font-size:12px;
+  }
+  .eyebrow .dot{width:9px;height:9px;border-radius:50%;background:var(--accent)}
+  .eyebrow .left{flex:1;display:flex;align-items:center;gap:8px}
+  .eyebrow .logo{height:20px;width:auto;flex:none}
+  .eyebrow .right{flex:1;text-align:right;color:var(--ink-faint);letter-spacing:.08em}
+  h1{
+    font-family:var(--display);font-weight:900;
+    font-size:clamp(34px,9vw,58px);line-height:.92;
+    margin:.18em 0 .12em;letter-spacing:-.02em;text-transform:uppercase;
+  }
+  h1 em{font-style:normal;color:var(--accent)}
+  .dek{font-family:var(--body);font-size:14px;color:var(--ink-soft);max-width:46ch}
+
+  /* ---- ticker / actieve aanwijzing ---- */
+  .ticker{
+    margin:14px 0 12px;background:var(--ink);color:#fff;
+    border-radius:4px;display:flex;align-items:stretch;overflow:hidden;
+    min-height:52px
+  }
+  .ticker .tag{
+    background:var(--accent);color:#fff;display:flex;align-items:center;
+    padding:0 12px;font-family:var(--narrow);font-weight:700;
+    text-transform:uppercase;letter-spacing:.08em;font-size:12px;white-space:nowrap
+  }
+  .ticker .txt{display:flex;align-items:center;padding:8px 14px;font-size:clamp(15px,3.6vw,19px);font-weight:500}
+  .ticker .txt b{font-weight:700}
+  .ticker .meta{margin-left:auto;display:flex;align-items:center;padding:0 14px;font-family:var(--mono);font-size:12px;color:var(--antenna);white-space:nowrap}
+
+  /* ---- rooster ---- */
+  .board-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px;margin:0 -14px;padding-left:14px;padding-right:14px}
+  .board{
+    --cs:42px;
+    display:grid;width:max-content;margin:0 auto;
+    border:2px solid var(--ink);background:var(--ink);
+    gap:1px;
+  }
+  @media(max-width:560px){.board{--cs:38px}}
+  .cell{width:var(--cs);height:var(--cs);position:relative;background:var(--block)}
+  .cell.letter{background:var(--cell)}
+  .cell.clue{background:var(--clue-bg)}
+  .cell.letter.hl{background:var(--active-line)}
+  .cell.letter.cur{background:var(--active)}
+  .cell input{
+    width:100%;height:100%;border:0;background:transparent;text-align:center;
+    font-family:var(--mono);font-weight:600;
+    font-size:calc(var(--cs)*.5);text-transform:uppercase;color:var(--ink);
+    padding:0;caret-color:var(--accent);outline:none
+  }
+  .cell input:focus{background:var(--active)}
+  .cell.bad input{color:var(--bad)}
+  .cell.ok input{color:var(--ok)}
+  /* aanwijstekst in vakje */
+  .clue .ctext{
+    position:absolute;inset:2px 3px;font-family:var(--narrow);font-weight:600;
+    font-size:8.5px;line-height:1.04;color:var(--clue-ink);overflow:hidden;
+    display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;cursor:pointer
+  }
+  .clue.multi .ctext{font-size:7.6px;-webkit-line-clamp:3}
+  .clue .divider{position:absolute;left:3px;right:3px;top:50%;height:1px;background:var(--antenna)}
+  /* pijlen */
+  .arrow{position:absolute;color:var(--accent-deep);font-size:13px;line-height:1;z-index:2;pointer-events:none}
+  .arrow.right{right:-7px;top:50%;transform:translateY(-50%)}
+  .arrow.down{bottom:-7px;left:50%;transform:translateX(-50%)}
+  .clue.sel .ctext{color:var(--accent-deep)}
+  .clue.sel{background:var(--active-line)}
+
+  /* ---- knoppen ---- */
+  .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:16px}
+  button{
+    font-family:var(--narrow);font-weight:700;text-transform:uppercase;letter-spacing:.05em;
+    font-size:13px;padding:9px 14px;border:2px solid var(--ink);background:var(--page);
+    color:var(--ink);border-radius:4px;cursor:pointer;transition:.12s
+  }
+  button:hover{background:var(--ink);color:var(--page)}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  button.primary:hover{background:var(--accent-deep);border-color:var(--accent-deep)}
+  button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+  /* artikelknop bij geselecteerd woord */
+  .article-btn{
+    font-family:var(--narrow);font-weight:700;text-transform:uppercase;letter-spacing:.05em;
+    font-size:13px;padding:9px 14px;border:2px solid var(--accent);background:var(--accent);
+    color:#fff;border-radius:4px;cursor:pointer;transition:.12s;text-decoration:none;
+    display:inline-flex;align-items:center;gap:6px
+  }
+  .article-btn:hover{background:var(--accent-deep);border-color:var(--accent-deep)}
+  .article-btn:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+  .article-btn[hidden]{display:none}
+  .prog{margin-left:auto;font-family:var(--mono);font-size:13px;color:var(--ink-soft)}
+  .prog b{color:var(--ink)}
+
+  .status{margin-top:12px;font-family:var(--narrow);font-size:14px;min-height:20px}
+  .status.win{color:var(--ok);font-weight:700;font-size:16px}
+  .status.miss{color:var(--bad);font-weight:700}
+
+  /* ---- bronnenlijst ---- */
+  details{margin-top:22px;border-top:1px solid var(--rule);padding-top:12px}
+  summary{font-family:var(--narrow);font-weight:700;text-transform:uppercase;letter-spacing:.06em;font-size:12px;cursor:pointer;color:var(--ink-soft)}
+  .cluelist{columns:2;column-gap:26px;margin-top:10px;font-size:13px}
+  @media(max-width:520px){.cluelist{columns:1}}
+  .cluelist div{break-inside:avoid;margin-bottom:5px}
+  .cluelist .n{font-family:var(--mono);color:var(--accent-deep);font-weight:600;margin-right:5px}
+  footer{margin-top:26px;border-top:3px solid var(--ink);padding-top:8px;font-family:var(--narrow);font-size:11px;color:var(--ink-faint);letter-spacing:.04em;text-transform:uppercase}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow"><span class="left"><span class="dot"></span>Puzzel</span><img class="logo" src="https://upload.wikimedia.org/wikipedia/commons/b/b9/NOS_logo.svg" alt="NOS"><span class="right" id="ed-week"></span></div>
+    <h1>Het <em>Nieuws</em>raadsel</h1>
+  </header>
+
+  <div class="ticker">
+    <span class="tag" id="tk-tag">Tik een vakje</span>
+    <span class="txt" id="tk-txt">Kies een grijs vakje of een letter om te beginnen.</span>
+    <span class="meta" id="tk-meta"></span>
+  </div>
+
+  <div class="board-scroll">
+    <div class="board" id="board"></div>
+  </div>
+
+  <div class="bar">
+    <button class="primary" id="btn-check">Controleer</button>
+    <button id="btn-hint">Hint</button>
+    <button id="btn-clear">Wissen</button>
+    <a id="btn-article" class="article-btn" target="_blank" rel="noopener" hidden>Lees het artikel →</a>
+    <span class="prog" id="prog">0 / 0</span>
+  </div>
+  <div class="status" id="status"></div>
+
+  <details>
+    <summary>Alle aanwijzingen (lijst)</summary>
+    <div class="cluelist" id="cluelist"></div>
+  </details>
+
+  <footer id="ed-footer">Nieuwsraadsel · gemaakt op basis van nos.nl</footer>
+</div>
+
+<script>
+const DATA = {"rows": 17, "cols": 17, "week": 27, "year": 2026, "cells": [{"r": 1, "c": 9, "type": "letter", "sol": "D"}, {"r": 1, "c": 11, "type": "letter", "sol": "H"}, {"r": 1, "c": 12, "type": "letter", "sol": "O"}, {"r": 1, "c": 13, "type": "letter", "sol": "R"}, {"r": 1, "c": 14, "type": "letter", "sol": "M"}, {"r": 1, "c": 15, "type": "letter", "sol": "U"}, {"r": 1, "c": 16, "type": "letter", "sol": "Z"}, {"r": 2, "c": 9, "type": "letter", "sol": "W"}, {"r": 2, "c": 11, "type": "letter", "sol": "I"}, {"r": 3, "c": 1, "type": "letter", "sol": "V"}, {"r": 3, "c": 2, "type": "letter", "sol": "E"}, {"r": 3, "c": 3, "type": "letter", "sol": "N"}, {"r": 3, "c": 4, "type": "letter", "sol": "E"}, {"r": 3, "c": 5, "type": "letter", "sol": "Z"}, {"r": 3, "c": 6, "type": "letter", "sol": "U"}, {"r": 3, "c": 7, "type": "letter", "sol": "E"}, {"r": 3, "c": 8, "type": "letter", "sol": "L"}, {"r": 3, "c": 9, "type": "letter", "sol": "A"}, {"r": 3, "c": 11, "type": "letter", "sol": "T"}, {"r": 4, "c": 9, "type": "letter", "sol": "N"}, {"r": 4, "c": 10, "type": "letter", "sol": "E"}, {"r": 4, "c": 11, "type": "letter", "sol": "T"}, {"r": 4, "c": 12, "type": "letter", "sol": "F"}, {"r": 4, "c": 13, "type": "letter", "sol": "L"}, {"r": 4, "c": 14, "type": "letter", "sol": "I"}, {"r": 4, "c": 15, "type": "letter", "sol": "X"}, {"r": 5, "c": 3, "type": "letter", "sol": "M"}, {"r": 5, "c": 9, "type": "letter", "sol": "G"}, {"r": 5, "c": 11, "type": "letter", "sol": "E"}, {"r": 6, "c": 2, "type": "letter", "sol": "P"}, {"r": 6, "c": 3, "type": "letter", "sol": "O"}, {"r": 6, "c": 4, "type": "letter", "sol": "L"}, {"r": 6, "c": 5, "type": "letter", "sol": "Y"}, {"r": 6, "c": 6, "type": "letter", "sol": "C"}, {"r": 6, "c": 7, "type": "letter", "sol": "R"}, {"r": 6, "c": 8, "type": "letter", "sol": "I"}, {"r": 6, "c": 9, "type": "letter", "sol": "S"}, {"r": 6, "c": 10, "type": "letter", "sol": "I"}, {"r": 6, "c": 11, "type": "letter", "sol": "S"}, {"r": 7, "c": 3, "type": "letter", "sol": "N"}, {"r": 7, "c": 9, "type": "letter", "sol": "O"}, {"r": 7, "c": 11, "type": "letter", "sol": "T"}, {"r": 7, "c": 13, "type": "letter", "sol": "P"}, {"r": 7, "c": 16, "type": "letter", "sol": "E"}, {"r": 8, "c": 2, "type": "letter", "sol": "B"}, {"r": 8, "c": 3, "type": "letter", "sol": "A"}, {"r": 8, "c": 4, "type": "letter", "sol": "G"}, {"r": 8, "c": 5, "type": "letter", "sol": "A"}, {"r": 8, "c": 6, "type": "letter", "sol": "G"}, {"r": 8, "c": 7, "type": "letter", "sol": "E"}, {"r": 8, "c": 9, "type": "letter", "sol": "M"}, {"r": 8, "c": 10, "type": "letter", "sol": "A"}, {"r": 8, "c": 11, "type": "letter", "sol": "R"}, {"r": 8, "c": 12, "type": "letter", "sol": "K"}, {"r": 8, "c": 13, "type": "letter", "sol": "E"}, {"r": 8, "c": 14, "type": "letter", "sol": "N"}, {"r": 8, "c": 16, "type": "letter", "sol": "U"}, {"r": 9, "c": 3, "type": "letter", "sol": "C"}, {"r": 9, "c": 11, "type": "letter", "sol": "E"}, {"r": 9, "c": 13, "type": "letter", "sol": "N"}, {"r": 9, "c": 16, "type": "letter", "sol": "R"}, {"r": 10, "c": 2, "type": "letter", "sol": "K"}, {"r": 10, "c": 3, "type": "letter", "sol": "O"}, {"r": 10, "c": 4, "type": "letter", "sol": "T"}, {"r": 10, "c": 5, "type": "letter", "sol": "T"}, {"r": 10, "c": 6, "type": "letter", "sol": "E"}, {"r": 10, "c": 7, "type": "letter", "sol": "R"}, {"r": 10, "c": 11, "type": "letter", "sol": "S"}, {"r": 10, "c": 13, "type": "letter", "sol": "I"}, {"r": 10, "c": 16, "type": "letter", "sol": "O"}, {"r": 11, "c": 2, "type": "letter", "sol": "N"}, {"r": 11, "c": 11, "type": "letter", "sol": "S"}, {"r": 11, "c": 13, "type": "letter", "sol": "S"}, {"r": 11, "c": 16, "type": "letter", "sol": "S"}, {"r": 12, "c": 1, "type": "letter", "sol": "P"}, {"r": 12, "c": 2, "type": "letter", "sol": "A"}, {"r": 12, "c": 3, "type": "letter", "sol": "K"}, {"r": 12, "c": 4, "type": "letter", "sol": "I"}, {"r": 12, "c": 5, "type": "letter", "sol": "S"}, {"r": 12, "c": 6, "type": "letter", "sol": "T"}, {"r": 12, "c": 7, "type": "letter", "sol": "A"}, {"r": 12, "c": 8, "type": "letter", "sol": "N"}, {"r": 12, "c": 13, "type": "letter", "sol": "P"}, {"r": 12, "c": 16, "type": "letter", "sol": "T"}, {"r": 13, "c": 2, "type": "letter", "sol": "K"}, {"r": 13, "c": 5, "type": "letter", "sol": "H"}, {"r": 13, "c": 13, "type": "letter", "sol": "L"}, {"r": 13, "c": 16, "type": "letter", "sol": "A"}, {"r": 14, "c": 1, "type": "letter", "sol": "P"}, {"r": 14, "c": 2, "type": "letter", "sol": "E"}, {"r": 14, "c": 3, "type": "letter", "sol": "U"}, {"r": 14, "c": 4, "type": "letter", "sol": "T"}, {"r": 14, "c": 5, "type": "letter", "sol": "E"}, {"r": 14, "c": 6, "type": "letter", "sol": "R"}, {"r": 14, "c": 9, "type": "letter", "sol": "S"}, {"r": 14, "c": 10, "type": "letter", "sol": "C"}, {"r": 14, "c": 11, "type": "letter", "sol": "H"}, {"r": 14, "c": 12, "type": "letter", "sol": "L"}, {"r": 14, "c": 13, "type": "letter", "sol": "A"}, {"r": 14, "c": 14, "type": "letter", "sol": "G"}, {"r": 14, "c": 15, "type": "letter", "sol": "E"}, {"r": 14, "c": 16, "type": "letter", "sol": "R"}, {"r": 15, "c": 2, "type": "letter", "sol": "N"}, {"r": 15, "c": 5, "type": "letter", "sol": "I"}, {"r": 15, "c": 13, "type": "letter", "sol": "N"}, {"r": 16, "c": 3, "type": "letter", "sol": "B"}, {"r": 16, "c": 4, "type": "letter", "sol": "A"}, {"r": 16, "c": 5, "type": "letter", "sol": "N"}, {"r": 16, "c": 6, "type": "letter", "sol": "K"}, {"r": 16, "c": 7, "type": "letter", "sol": "P"}, {"r": 16, "c": 8, "type": "letter", "sol": "A"}, {"r": 16, "c": 9, "type": "letter", "sol": "S"}, {"r": 16, "c": 12, "type": "letter", "sol": "S"}, {"r": 16, "c": 13, "type": "letter", "sol": "T"}, {"r": 16, "c": 14, "type": "letter", "sol": "A"}, {"r": 16, "c": 15, "type": "letter", "sol": "D"}, {"r": 16, "c": 16, "type": "letter", "sol": "E"}, {"r": 8, "c": 1, "type": "clue", "clues": [{"text": "Afhandeling hiervan halveert op Schiphol", "arrow": "right", "len": 6}]}, {"r": 4, "c": 3, "type": "clue", "clues": [{"text": "Prinsdom met bomaanslag", "arrow": "down", "len": 6}]}, {"r": 6, "c": 1, "type": "clue", "clues": [{"text": "Stapeling van gezondheidsproblemen", "arrow": "right", "len": 10}]}, {"r": 0, "c": 9, "type": "clue", "clues": [{"text": "Boete voor recidiverende jongeren", "arrow": "down", "len": 8}]}, {"r": 0, "c": 11, "type": "clue", "clues": [{"text": "Warmteprobleem dat slim raam oplost", "arrow": "down", "len": 11}]}, {"r": 3, "c": 0, "type": "clue", "clues": [{"text": "Land getroffen door zware bevingen", "arrow": "right", "len": 9}]}, {"r": 10, "c": 1, "type": "clue", "clues": [{"text": "Vissersboot na 60 jaar gevonden", "arrow": "right", "len": 6}]}, {"r": 8, "c": 8, "type": "clue", "clues": [{"text": "Eiland van verongelukte Tamar", "arrow": "right", "len": 6}]}, {"r": 6, "c": 13, "type": "clue", "clues": [{"text": "Stinkende bloem trekt museumbezoekers", "arrow": "down", "len": 10}]}, {"r": 9, "c": 2, "type": "clue", "clues": [{"text": "Failliete cryptohandelsplaats", "arrow": "down", "len": 6}]}, {"r": 14, "c": 0, "type": "clue", "clues": [{"text": "Klein kind valt uit raam", "arrow": "right", "len": 6}]}, {"r": 16, "c": 11, "type": "clue", "clues": [{"text": "Duits stadje met dodelijke schietpartij", "arrow": "right", "len": 5}]}, {"r": 11, "c": 5, "type": "clue", "clues": [{"text": "Chinees modemerk met reclameverbod", "arrow": "down", "len": 5}]}, {"r": 12, "c": 0, "type": "clue", "clues": [{"text": "Land valt Afghaans grensgebied aan", "arrow": "right", "len": 8}]}, {"r": 14, "c": 8, "type": "clue", "clues": [{"text": "Muziekgenre van Helene Fischer", "arrow": "right", "len": 8}]}, {"r": 6, "c": 16, "type": "clue", "clues": [{"text": "Trein van Londen naar Parijs", "arrow": "down", "len": 8}]}, {"r": 4, "c": 8, "type": "clue", "clues": [{"text": "Opgelichte Amerikaanse streamingdienst", "arrow": "right", "len": 7}]}, {"r": 16, "c": 2, "type": "clue", "clues": [{"text": "Gestolen betaalmiddel bij fraude", "arrow": "right", "len": 7}]}, {"r": 1, "c": 10, "type": "clue", "clues": [{"text": "Zeestraat die weer vrij moet", "arrow": "right", "len": 6}]}], "words": [{"word": "BAGAGE", "r": 8, "c": 2, "dir": "H", "url": "https://nos.nl/artikel/2621007-van-zes-naar-drie-schiphol-maakt-keuze-voor-bagage-afhandelaars-bekend", "title": "Van zes naar drie, Schiphol maakt keuze voor bagage-afhandelaars bekend"}, {"word": "MONACO", "r": 5, "c": 3, "dir": "V", "url": "https://nos.nl/artikel/2620971-justitie-in-monaco-beschouwt-bomexplosie-niet-als-terreuraanslag", "title": "Justitie in Monaco beschouwt bomexplosie niet als terreuraanslag"}, {"word": "POLYCRISIS", "r": 6, "c": 2, "dir": "H", "url": "https://nos.nl/artikel/2620984-rivm-vreest-polycrisis-samenwerking-nodig-voor-zich-opstapelende-problemen", "title": "RIVM vreest polycrisis: samenwerking nodig voor zich opstapelende problemen"}, {"word": "DWANGSOM", "r": 1, "c": 9, "dir": "V", "url": "https://nos.nl/artikel/2620775-steeds-vaker-hoge-dwangsommen-voor-minderjarigen-effect-blijft-onduidelijk", "title": "Steeds vaker hoge dwangsommen voor minderjarigen, effect blijft onduidelijk"}, {"word": "HITTESTRESS", "r": 1, "c": 11, "dir": "V", "url": "https://nos.nl/artikel/2620834-nieuwe-slimme-ramen-mogelijk-het-antwoord-op-hittestress", "title": "Nieuwe 'slimme ramen' mogelijk het antwoord op hittestress"}, {"word": "VENEZUELA", "r": 3, "c": 1, "dir": "H", "url": "https://nos.nl/artikel/2620903-dodental-aardbevingen-venezuela-opgelopen-tot-1700-duizenden-mensen-gewond", "title": "Dodental aardbevingen Venezuela opgelopen tot 1700, duizenden mensen gewond"}, {"word": "KOTTER", "r": 10, "c": 2, "dir": "H", "url": "https://nos.nl/artikel/2620904-wieringer-viskotter-na-bijna-60-jaar-gevonden-bij-sylt-de-allermooiste-vondst", "title": "Wieringer viskotter na bijna 60 jaar gevonden bij Sylt: 'De allermooiste vondst'"}, {"word": "MARKEN", "r": 8, "c": 9, "dir": "H", "url": "https://nos.nl/artikel/2620998-om-maakt-excuses-in-zaak-van-14-jarige-tamar-uit-marken-vragen-blijven", "title": "OM maakt excuses in zaak van 14-jarige Tamar uit Marken, vragen blijven"}, {"word": "PENISPLANT", "r": 7, "c": 13, "dir": "V", "url": "https://nos.nl/artikel/2620768-belgisch-museum-gratis-toegankelijk-omdat-stinkende-penisplant-in-bloei-staat", "title": "Belgisch museum gratis toegankelijk omdat stinkende 'penisplant' in bloei staat"}, {"word": "KNAKEN", "r": 10, "c": 2, "dir": "V", "url": "https://nos.nl/artikel/2620942-om-vraagt-faillissement-cryptoplatform-knaken-aan-klanten-in-onzekerheid", "title": "OM vraagt faillissement cryptoplatform Knaken aan, klanten in onzekerheid"}, {"word": "PEUTER", "r": 14, "c": 1, "dir": "H", "url": "https://nos.nl/artikel/2621000-kinderen-die-uit-het-raam-vallen-hoe-kun-je-het-voorkomen", "title": "Kinderen die uit het raam vallen, hoe kun je het voorkomen?"}, {"word": "STADE", "r": 16, "c": 12, "dir": "H", "url": "https://nos.nl/artikel/2620889-dader-moordpartij-stade-was-vader-van-kind-uit-instelling", "title": "Dader moordpartij Stade was vader van kind uit instelling"}, {"word": "SHEIN", "r": 12, "c": 5, "dir": "V", "url": "https://nos.nl/artikel/2620936-frankrijk-verbiedt-reclame-voor-ultrafastfashionwinkels-als-shein-en-temu", "title": "Frankrijk verbiedt reclame voor ultrafastfashionwinkels als Shein en Temu"}, {"word": "PAKISTAN", "r": 12, "c": 1, "dir": "H", "url": "https://nos.nl/artikel/2620769-tientallen-doden-bij-pakistaanse-aanvallen-in-afghaans-grensgebied", "title": "Tientallen doden bij Pakistaanse aanvallen in Afghaans grensgebied"}, {"word": "SCHLAGER", "r": 14, "c": 9, "dir": "H", "url": "https://nos.nl/artikel/2620990-schlager-popster-helene-fischer-doet-met-stadiontour-nederland-aan-jullie-zijn-luid", "title": "Schlager-popster Helene Fischer doet met stadiontour Nederland aan: 'Jullie zijn luid!'"}, {"word": "EUROSTAR", "r": 7, "c": 16, "dir": "V", "url": "https://nos.nl/artikel/2620986-ook-geen-internationale-treinen-naar-engeland-door-brand-in-kabelgoot", "title": "Ook geen internationale treinen naar Engeland door brand in kabelgoot"}, {"word": "NETFLIX", "r": 4, "c": 9, "dir": "H", "url": "https://nos.nl/artikel/2620918-filmmaker-veroordeeld-na-oplichten-netflix-voor-11-miljoen-dollar", "title": "Filmmaker veroordeeld na oplichten Netflix voor 11 miljoen dollar"}, {"word": "BANKPAS", "r": 16, "c": 3, "dir": "H", "url": "https://nos.nl/artikel/2620987-dnb-stijging-in-fraudezaken-onder-andere-meer-gestolen-bankpassen", "title": "DNB: stijging in fraudezaken, onder andere meer gestolen bankpassen"}, {"word": "HORMUZ", "r": 1, "c": 11, "dir": "H", "url": "https://nos.nl/artikel/2620766-amerikaanse-media-vs-en-iran-staken-aanvallen-gesprekken-gaan-door", "title": "Amerikaanse media: VS en Iran staken aanvallen, gesprekken gaan door"}]};
+
+const key=(r,c)=>r+","+c;
+const board=document.getElementById('board');
+board.style.gridTemplateColumns=`repeat(${DATA.cols}, var(--cs))`;
+board.style.gridTemplateRows=`repeat(${DATA.rows}, var(--cs))`;
+
+// indexen
+const cellMap=new Map();      // "r,c" -> celdata
+DATA.cells.forEach(c=>cellMap.set(key(c.r,c.c),c));
+
+// woordmembership per lettercel
+const wordsAt=new Map();      // "r,c" -> [wordObj...]
+DATA.words.forEach((w,wi)=>{
+  const dr=w.dir==='H'?0:1, dc=w.dir==='H'?1:0;
+  w.idx=wi; w.cells=[];
+  for(let i=0;i<w.word.length;i++){
+    const k=key(w.r+dr*i,w.c+dc*i);
+    w.cells.push(k);
+    if(!wordsAt.has(k)) wordsAt.set(k,[]);
+    wordsAt.get(k).push(w);
+  }
+});
+
+const inputs=new Map();       // "r,c" -> input element
+let active={word:null,k:null};
+
+function render(){
+  for(let r=0;r<DATA.rows;r++){
+    for(let c=0;c<DATA.cols;c++){
+      const d=cellMap.get(key(r,c));
+      const el=document.createElement('div');
+      el.className='cell';
+      if(!d){ board.appendChild(el); continue; }
+      if(d.type==='letter'){
+        el.classList.add('letter');
+        const inp=document.createElement('input');
+        inp.maxLength=1; inp.inputMode='text'; inp.autocapitalize='characters';
+        inp.dataset.k=key(r,c);
+        inp.addEventListener('focus',()=>onFocus(key(r,c)));
+        inp.addEventListener('input',onInput);
+        inp.addEventListener('keydown',onKey);
+        inp.addEventListener('click',()=>toggleDir(key(r,c)));
+        el.appendChild(inp);
+        inputs.set(key(r,c),inp);
+      } else {
+        el.classList.add('clue');
+        if(d.clues.length>1) el.classList.add('multi');
+        d.clues.forEach((cl,i)=>{
+          const t=document.createElement('div');
+          t.className='ctext';
+          if(d.clues.length>1) t.style.cssText='inset:'+(i?'auto 3px 2px':'2px 3px auto')+';bottom:'+(i?2:'auto');
+          t.textContent=cl.text;
+          const ar=document.createElement('span');
+          ar.className='arrow '+cl.arrow;
+          ar.textContent=cl.arrow==='right'?'▶':'▼';
+          t.appendChild(ar);
+          t.addEventListener('click',()=>selectClue(d,cl));
+          el.appendChild(t);
+          el.appendChild(ar);
+          if(d.clues.length>1 && i===0){const dv=document.createElement('div');dv.className='divider';el.appendChild(dv);}
+        });
+      }
+      board.appendChild(el);
+    }
+  }
+  updateProgress();
+}
+
+function wordForClue(d,cl){
+  const dr=cl.arrow==='right'?0:1, dc=cl.arrow==='right'?1:0;
+  const sr=d.r+dr, sc=d.c+dc;
+  return DATA.words.find(w=>w.r===sr&&w.c===sc&&((cl.arrow==='right')===(w.dir==='H')));
+}
+function selectClue(d,cl){
+  const w=wordForClue(d,cl); if(!w) return;
+  active.word=w; setActiveCell(w.cells[0],true); highlight();
+  inputs.get(w.cells[0]).focus();
+}
+function onFocus(k){
+  active.k=k;
+  const ws=wordsAt.get(k)||[];
+  if(!active.word || !active.word.cells.includes(k)) active.word=ws[0]||null;
+  highlight();
+}
+function toggleDir(k){
+  const ws=wordsAt.get(k)||[];
+  if(ws.length>1 && active.word){
+    const other=ws.find(w=>w!==active.word);
+    if(other && active.k===k){ active.word=other; highlight(); }
+  }
+}
+function setActiveCell(k,focus){active.k=k; if(focus&&inputs.get(k)) inputs.get(k).focus();}
+
+function highlight(){
+  document.querySelectorAll('.cell.letter').forEach(el=>el.classList.remove('hl','cur'));
+  document.querySelectorAll('.cell.clue').forEach(el=>el.classList.remove('sel'));
+  if(active.word){
+    active.word.cells.forEach(k=>{const el=inputs.get(k)?.parentElement; if(el) el.classList.add('hl');});
+    // markeer bijbehorend clue-vakje
+    const w=active.word;const dr=w.dir==='H'?0:1,dc=w.dir==='H'?1:0;
+    const cd=cellMap.get(key(w.r-dr,w.c-dc));
+    if(cd&&cd.type==='clue'){
+      const idx=[...board.children].findIndex((_,i)=>{const rr=Math.floor(i/DATA.cols),cc=i%DATA.cols;return rr===w.r-dr&&cc===w.c-dc;});
+      if(idx>=0) board.children[idx].classList.add('sel');
+    }
+    updateTicker();
+  }
+  if(active.k){const el=inputs.get(active.k)?.parentElement; if(el) el.classList.add('cur');}
+  updateArticleBtn();
+}
+
+function updateArticleBtn(){
+  const a=document.getElementById('btn-article');
+  const w=active.word;
+  if(w&&w.url){ a.href=w.url; a.title=w.title||''; a.hidden=false; }
+  else { a.hidden=true; a.removeAttribute('href'); }
+}
+
+function updateTicker(){
+  const w=active.word; if(!w) return;
+  const dr=w.dir==='H'?0:1,dc=w.dir==='H'?1:0;
+  const cd=cellMap.get(key(w.r-dr,w.c-dc));
+  const cl=cd?.clues?.find(x=>wordForClue(cd,x)===w);
+  document.getElementById('tk-tag').textContent=(w.dir==='H'?'→ Horizontaal':'↓ Verticaal');
+  document.getElementById('tk-txt').innerHTML=cl?cl.text:'';
+  document.getElementById('tk-meta').textContent=w.word.length+' letters';
+}
+
+function nextCell(k,back){
+  const w=active.word; if(!w) return null;
+  const i=w.cells.indexOf(k); if(i<0) return null;
+  const j=back?i-1:i+1;
+  return (j>=0&&j<w.cells.length)?w.cells[j]:null;
+}
+function onInput(e){
+  const inp=e.target; const k=inp.dataset.k;
+  inp.value=(inp.value||'').toUpperCase().replace(/[^A-Z]/g,'').slice(-1);
+  inp.parentElement.classList.remove('bad','ok');
+  if(inp.value){const n=nextCell(k,false); if(n) inputs.get(n).focus();}
+  updateProgress();
+}
+function onKey(e){
+  const k=e.target.dataset.k;
+  if(e.key==='Backspace'&&!e.target.value){const p=nextCell(k,true); if(p){inputs.get(p).focus();inputs.get(p).value='';e.preventDefault();}}
+  else if(e.key==='ArrowRight') move(k,0,1,e);
+  else if(e.key==='ArrowLeft') move(k,0,-1,e);
+  else if(e.key==='ArrowDown') move(k,1,0,e);
+  else if(e.key==='ArrowUp') move(k,-1,0,e);
+}
+function move(k,dr,dc,e){
+  const [r,c]=k.split(',').map(Number);
+  for(let s=1;s<20;s++){const nk=key(r+dr*s,c+dc*s); if(inputs.has(nk)){inputs.get(nk).focus();e.preventDefault();return;} if(!cellMap.has(nk)&&(r+dr*s<0||c+dc*s<0||r+dr*s>=DATA.rows||c+dc*s>=DATA.cols))return;}
+}
+
+function updateProgress(){
+  let filled=0; inputs.forEach(i=>{if(i.value)filled++;});
+  document.getElementById('prog').innerHTML=`<b>${filled}</b> / ${inputs.size}`;
+}
+
+document.getElementById('btn-check').onclick=()=>{
+  let wrong=0,empty=0;
+  inputs.forEach((inp,k)=>{
+    inp.parentElement.classList.remove('ok','bad');
+    const sol=cellMap.get(k).sol;
+    if(!inp.value){empty++;return;}
+    if(inp.value===sol) inp.parentElement.classList.add('ok');
+    else {inp.parentElement.classList.add('bad'); wrong++;}
+  });
+  const s=document.getElementById('status');
+  if(wrong===0&&empty===0){s.className='status win';s.textContent='✓ Helemaal goed — je bent helemaal bij met het nieuws van vandaag.';}
+  else if(wrong===0){s.className='status';s.textContent=`Goed bezig: nog ${empty} ${empty===1?'vakje':'vakjes'} te gaan, geen fouten.`;}
+  else {s.className='status miss';s.textContent=`${wrong} ${wrong===1?'letter klopt':'letters kloppen'} nog niet (rood gemarkeerd).`;}
+  setTimeout(()=>inputs.forEach(i=>i.parentElement.classList.remove('ok','bad')),2600);
+};
+document.getElementById('btn-hint').onclick=()=>{
+  const k=active.k||(active.word&&active.word.cells.find(c=>!inputs.get(c).value));
+  if(!k){document.getElementById('status').textContent='Kies eerst een vakje voor een hint.';return;}
+  const inp=inputs.get(k); inp.value=cellMap.get(k).sol;
+  inp.parentElement.classList.add('ok'); setTimeout(()=>inp.parentElement.classList.remove('ok'),1500);
+  const n=nextCell(k,false); if(n) inputs.get(n).focus();
+  updateProgress();
+};
+document.getElementById('btn-clear').onclick=()=>{
+  inputs.forEach(i=>{i.value='';i.parentElement.classList.remove('ok','bad');});
+  document.getElementById('status').textContent=''; document.getElementById('status').className='status';
+  updateProgress();
+};
+
+// bronnenlijst
+function buildList(){
+  const wrap=document.getElementById('cluelist');
+  const hor=[],ver=[];
+  DATA.words.forEach(w=>{
+    const dr=w.dir==='H'?0:1,dc=w.dir==='H'?1:0;
+    const cd=cellMap.get(key(w.r-dr,w.c-dc));
+    const cl=cd?.clues?.find(x=>wordForClue(cd,x)===w);
+    (w.dir==='H'?hor:ver).push({t:cl?cl.text:'',l:w.word.length,w});
+  });
+  const sec=(title,arr)=>{
+    let h=`<div style="break-after:avoid;font-family:var(--narrow);font-weight:700;color:var(--accent-deep);margin:4px 0 6px">${title}</div>`;
+    arr.forEach(o=>{h+=`<div data-k="${o.w.cells[0]}"><span class="n">${o.l}</span>${o.t}</div>`;});
+    return h;
+  };
+  wrap.innerHTML=sec('→ Horizontaal',hor)+sec('↓ Verticaal',ver);
+  wrap.querySelectorAll('[data-k]').forEach(el=>el.addEventListener('click',()=>{
+    const k=el.dataset.k; active.word=wordsAt.get(k).find(w=>w.cells[0]===k)||wordsAt.get(k)[0];
+    inputs.get(k).focus();
+  }));
+}
+
+// weeknummer in de kop + titel
+if(DATA.week){
+  document.getElementById('ed-week').textContent='Week '+DATA.week;
+  document.title='NOS Nieuwsraadsel · Week '+DATA.week;
+  document.getElementById('ed-footer').textContent='Nieuwsraadsel · gemaakt op basis van nos.nl · Week '+DATA.week;
+}
+
+// rooster passend maken: celgrootte volgt de beschikbare breedte en het
+// aantal kolommen (dat per puzzel verschilt), zodat het bord altijd past.
+function fitBoard(){
+  const scroll=board.parentElement;            // .board-scroll
+  const avail=scroll.clientWidth-28;           // minus 14px padding links+rechts
+  const fit=Math.floor((avail-4-(DATA.cols-1))/DATA.cols); // rand 2*2 + 1px gaps
+  board.style.setProperty('--cs',Math.max(18,Math.min(42,fit))+'px');
+}
+
+render(); buildList(); fitBoard();
+window.addEventListener('resize',fitBoard);
+window.addEventListener('orientationchange',fitBoard);
+</script>
+</body>
+</html>
