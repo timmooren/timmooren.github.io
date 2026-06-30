@@ -164,6 +164,24 @@
   .cluelist .n{font-family:var(--mono);color:var(--accent-deep);font-weight:600;margin-right:5px}
   footer{margin-top:26px;border-top:3px solid var(--ink);padding-top:8px;font-family:var(--narrow);font-size:11px;color:var(--ink-faint);letter-spacing:.04em;text-transform:uppercase}
   @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+  /* ---- afdrukken (A4): rooster met nummers + aanwijzingenlijst, geen knoppen ---- */
+  @media print{
+    @page{size:A4;margin:14mm}
+    body{padding:0;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .ticker,.bar,.status{display:none!important}      /* hint, lees-artikel, voortgang enz. */
+    header{border-bottom-width:2px}
+    .board-scroll{overflow:visible;margin:0;padding:0}
+    .board{--cs:9mm;margin:6mm 0}                      /* vaste celgrootte die op A4 past */
+    .clue .ctext{display:none}                          /* nummers i.p.v. tekst in de vakjes */
+    .clue .cnum{display:flex}
+    details{border-top:2px solid #000;margin-top:8mm}
+    summary{display:none}                               /* lijst altijd uitklappen, geen toggle */
+    .cluelist{columns:2}
+    .cell input{color:#000}
+    .clue.sel{background:var(--clue-bg)}                /* geen selectie-accent op papier */
+    a[href]::after{content:""}                          /* geen URL's achter links afdrukken */
+  }
 </style>
 </head>
 <body>
@@ -187,6 +205,7 @@
     <button class="primary" id="btn-check">Controleer</button>
     <button id="btn-hint">Hint</button>
     <button id="btn-clear">Wissen</button>
+    <button id="btn-print">Afdrukken</button>
     <a id="btn-article" class="article-btn" target="_blank" rel="noopener" hidden>Lees het artikel →</a>
     <span class="prog" id="prog">0 / 0</span>
   </div>
@@ -426,6 +445,13 @@ document.getElementById('btn-clear').onclick=()=>{
   document.getElementById('status').textContent=''; document.getElementById('status').className='status';
   updateProgress(); clearProgress();
 };
+document.getElementById('btn-print').onclick=()=>window.print();
+// bij afdrukken: aanwijzingenlijst openklappen en de vaste A4-celgrootte laten gelden
+window.addEventListener('beforeprint',()=>{
+  const d=document.querySelector('details'); if(d) d.open=true;
+  board.style.removeProperty('--cs');
+});
+window.addEventListener('afterprint',fitBoard);
 
 // bronnenlijst
 function buildList(){
