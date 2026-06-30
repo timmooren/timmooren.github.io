@@ -332,11 +332,11 @@ function onInput(e){
   inp.value=(inp.value||'').toUpperCase().replace(/[^A-Z]/g,'').slice(-1);
   inp.parentElement.classList.remove('bad','ok');
   if(inp.value){const n=nextCell(k,false); if(n) inputs.get(n).focus();}
-  updateProgress();
+  updateProgress(); saveProgress();
 }
 function onKey(e){
   const k=e.target.dataset.k;
-  if(e.key==='Backspace'&&!e.target.value){const p=nextCell(k,true); if(p){inputs.get(p).focus();inputs.get(p).value='';e.preventDefault();}}
+  if(e.key==='Backspace'&&!e.target.value){const p=nextCell(k,true); if(p){inputs.get(p).focus();inputs.get(p).value='';e.preventDefault();updateProgress();saveProgress();}}
   else if(e.key==='ArrowRight') move(k,0,1,e);
   else if(e.key==='ArrowLeft') move(k,0,-1,e);
   else if(e.key==='ArrowDown') move(k,1,0,e);
@@ -350,6 +350,33 @@ function move(k,dr,dc,e){
 function updateProgress(){
   let filled=0; inputs.forEach(i=>{if(i.value)filled++;});
   document.getElementById('prog').innerHTML=`<b>${filled}</b> / ${inputs.size}`;
+}
+
+// --- voortgang bewaren in localStorage, per ISO-week -------------------------
+const STORE_KEY='nieuwsraadsel-'+(DATA.year||'')+'-W'+(DATA.week||'');
+function saveProgress(){
+  try{
+    const o={}; inputs.forEach((inp,k)=>{ if(inp.value) o[k]=inp.value; });
+    if(Object.keys(o).length) localStorage.setItem(STORE_KEY,JSON.stringify(o));
+    else localStorage.removeItem(STORE_KEY);
+  }catch(e){}
+}
+function restoreProgress(){
+  try{
+    const raw=localStorage.getItem(STORE_KEY); if(!raw) return;
+    const o=JSON.parse(raw);
+    for(const k in o){ const inp=inputs.get(k); if(inp) inp.value=o[k]; }
+    updateProgress();
+  }catch(e){}
+}
+function clearProgress(){ try{ localStorage.removeItem(STORE_KEY); }catch(e){} }
+function pruneOld(){            // oude weken opruimen, alleen huidige week bewaren
+  try{
+    for(let i=localStorage.length-1;i>=0;i--){
+      const k=localStorage.key(i);
+      if(k && k.startsWith('nieuwsraadsel-') && k!==STORE_KEY) localStorage.removeItem(k);
+    }
+  }catch(e){}
 }
 
 document.getElementById('btn-check').onclick=()=>{
@@ -373,12 +400,12 @@ document.getElementById('btn-hint').onclick=()=>{
   const inp=inputs.get(k); inp.value=cellMap.get(k).sol;
   inp.parentElement.classList.add('ok'); setTimeout(()=>inp.parentElement.classList.remove('ok'),1500);
   const n=nextCell(k,false); if(n) inputs.get(n).focus();
-  updateProgress();
+  updateProgress(); saveProgress();
 };
 document.getElementById('btn-clear').onclick=()=>{
   inputs.forEach(i=>{i.value='';i.parentElement.classList.remove('ok','bad');});
   document.getElementById('status').textContent=''; document.getElementById('status').className='status';
-  updateProgress();
+  updateProgress(); clearProgress();
 };
 
 // bronnenlijst
@@ -420,6 +447,7 @@ function fitBoard(){
 }
 
 render(); buildList(); fitBoard();
+pruneOld(); restoreProgress();
 window.addEventListener('resize',fitBoard);
 window.addEventListener('orientationchange',fitBoard);
 </script>
