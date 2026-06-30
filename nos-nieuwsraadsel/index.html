@@ -389,7 +389,7 @@ document.getElementById('btn-check').onclick=()=>{
     else {inp.parentElement.classList.add('bad'); wrong++;}
   });
   const s=document.getElementById('status');
-  if(wrong===0&&empty===0){s.className='status win';s.textContent='✓ Helemaal goed — je bent helemaal bij met het nieuws van vandaag.';}
+  if(wrong===0&&empty===0){s.className='status win';s.textContent='✓ Helemaal goed';}
   else if(wrong===0){s.className='status';s.textContent=`Goed bezig: nog ${empty} ${empty===1?'vakje':'vakjes'} te gaan, geen fouten.`;}
   else {s.className='status miss';s.textContent=`${wrong} ${wrong===1?'letter klopt':'letters kloppen'} nog niet (rood gemarkeerd).`;}
   setTimeout(()=>inputs.forEach(i=>i.parentElement.classList.remove('ok','bad')),2600);
