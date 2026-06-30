@@ -167,17 +167,19 @@
 
   /* ---- afdrukken (A4): rooster met nummers + aanwijzingenlijst, geen knoppen ---- */
   @media print{
-    @page{size:A4;margin:14mm}
+    @page{size:A4;margin:12mm}
     body{padding:0;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .ticker,.bar,.status{display:none!important}      /* hint, lees-artikel, voortgang enz. */
-    header{border-bottom-width:2px}
+    header{border-bottom-width:2px;padding-bottom:5px}
+    h1{font-size:30px;margin:.08em 0}                   /* compacte kop op papier */
+    /* !important overruled de inline --cs van het scherm, zodat het rooster op A4 past */
+    .board{--cs:8mm!important;margin:5mm auto}
     .board-scroll{overflow:visible;margin:0;padding:0}
-    .board{--cs:9mm;margin:6mm 0}                      /* vaste celgrootte die op A4 past */
     .clue .ctext{display:none}                          /* nummers i.p.v. tekst in de vakjes */
     .clue .cnum{display:flex}
-    details{border-top:2px solid #000;margin-top:8mm}
+    details{border-top:2px solid #000;margin-top:6mm}
     summary{display:none}                               /* lijst altijd uitklappen, geen toggle */
-    .cluelist{columns:2}
+    .cluelist{columns:2;font-size:11px}
     .cell input{color:#000}
     .clue.sel{background:var(--clue-bg)}                /* geen selectie-accent op papier */
     a[href]::after{content:""}                          /* geen URL's achter links afdrukken */
