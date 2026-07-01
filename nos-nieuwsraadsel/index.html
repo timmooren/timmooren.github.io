@@ -180,7 +180,7 @@
   @media print{
     @page{size:A4;margin:12mm}
     body{padding:0;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    .ticker,.bar,.status{display:none!important}      /* hint, lees-artikel, voortgang enz. */
+    .ticker,.bar,.status{display:none!important}      /* help, lees-artikel, voortgang enz. */
     header{border-bottom-width:2px;padding-bottom:5px}
     h1{font-size:30px;margin:.08em 0}                   /* compacte kop op papier */
     /* !important overruled de inline --cs van het scherm, zodat het rooster op A4 past */
@@ -216,7 +216,7 @@
 
   <div class="bar">
     <button class="primary" id="btn-check">Controleer</button>
-    <button id="btn-hint">Hint</button>
+    <button id="btn-help">Help!</button>
     <button id="btn-clear">Wissen</button>
     <button id="btn-print">Afdrukken</button>
     <a id="btn-article" class="article-btn" target="_blank" rel="noopener" hidden>Lees het artikel →</a>
@@ -461,13 +461,29 @@ document.getElementById('btn-check').onclick=()=>{
   else {s.className='status miss';s.textContent=`${wrong} ${wrong===1?'letter klopt':'letters kloppen'} nog niet (rood gemarkeerd).`;}
   setTimeout(()=>inputs.forEach(i=>i.parentElement.classList.remove('ok','bad')),2600);
 };
-document.getElementById('btn-hint').onclick=()=>{
-  const k=active.k||(active.word&&active.word.cells.find(c=>!inputs.get(c).value));
-  if(!k){document.getElementById('status').textContent='Kies eerst een vakje voor een hint.';return;}
-  const inp=inputs.get(k); inp.value=cellMap.get(k).sol;
-  inp.parentElement.classList.add('ok'); setTimeout(()=>inp.parentElement.classList.remove('ok'),1500);
-  const n=nextCell(k,false); if(n) inputs.get(n).focus();
-  updateProgress(); saveProgress();
+// --- delen via de URL-hash ("Help!") ---------------------------------------
+function encodeShare(p){
+  return encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(p)))));
+}
+function decodeShare(str){
+  try{ return JSON.parse(decodeURIComponent(escape(atob(decodeURIComponent(str))))); }
+  catch(e){ return null; }
+}
+function findWeekIdx(y,w){ return WEEKS.findIndex(d=>d.year===y&&d.week===w); }
+
+document.getElementById('btn-help').onclick=async()=>{
+  const c={}; inputs.forEach((inp,k)=>{ if(inp.value) c[k]=inp.value; });
+  const payload={y:DATA.year,w:DATA.week,c};
+  const url=location.href.split('#')[0]+'#s='+encodeShare(payload);
+  const status=document.getElementById('status');
+  status.className='status';
+  try{
+    if(navigator.share){ await navigator.share({url}); return; }
+    await navigator.clipboard.writeText(url);
+    status.textContent="Link gekopieerd — stuur 'm naar iemand die met je meepuzzelt.";
+  }catch(e){
+    status.textContent=url;
+  }
 };
 document.getElementById('btn-clear').onclick=()=>{
   inputs.forEach(i=>{i.value='';i.parentElement.classList.remove('ok','bad');});
@@ -534,8 +550,31 @@ function goWeek(i){
 document.getElementById('wk-prev').onclick=()=>goWeek(current+1); // ouder
 document.getElementById('wk-next').onclick=()=>goWeek(current-1); // nieuwer
 
+// gedeelde link ontvangen: hash "#s=..." bevat een puzzelstand van een ander
+function receiveShare(){
+  const m=location.hash.match(/^#s=(.+)$/);
+  if(!m) return;
+  const shared=decodeShare(m[1]);
+  history.replaceState(null,'',location.pathname+location.search);
+  if(!shared) return;
+  const idx=findWeekIdx(shared.y,shared.w);
+  if(idx<0){
+    document.getElementById('status').textContent='Die gedeelde puzzel (week '+shared.w+') is niet meer beschikbaar.';
+    return;
+  }
+  current=idx;
+  mount(WEEKS[current]);
+  let hasOwnProgress=false;
+  inputs.forEach(inp=>{ if(inp.value) hasOwnProgress=true; });
+  if(!hasOwnProgress || confirm('Iemand deelde een puzzel met je. Overnemen? Je eigen voortgang voor deze week wordt vervangen.')){
+    for(const k in shared.c){ const inp=inputs.get(k); if(inp) inp.value=shared.c[k]; }
+    updateProgress(); saveProgress();
+  }
+}
+
 pruneOld();
 mount(WEEKS[current]);
+receiveShare();
 window.addEventListener('resize',fitBoard);
 window.addEventListener('orientationchange',fitBoard);
 </script>
