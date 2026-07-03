@@ -309,7 +309,7 @@ function setRunning(running) {
   } else {
     timer.elapsed = currentElapsed();
     timer.running = false;
-    btnPlay.textContent = "\u25B6";
+    btnPlay.textContent = "\u25B6\uFE0E";
     btnPlay.setAttribute("aria-label", "Resume");
     cancelAnimationFrame(timer.rafId);
   }

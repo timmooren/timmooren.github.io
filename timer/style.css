@@ -241,9 +241,11 @@ h2 {
   overflow: hidden;
 }
 
-/* The whole screen is the progress bar: this layer drains as time runs out */
+/* The whole screen is the progress bar: this layer drains as time runs out.
+   Fixed (not absolute) so it paints edge-to-edge behind iOS Safari's toolbars
+   instead of stopping at the dynamic-viewport edge. */
 #fill {
-  position: absolute;
+  position: fixed;
   inset: 0;
   transform-origin: bottom;
   transition: background-color 0.3s;
