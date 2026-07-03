@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0e0f13">
+  <title>Tabata</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⏱️</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Home: pick a preset -->
+  <section id="view-home" class="view active">
+    <header class="home-header">
+      <h1>Tabata</h1>
+      <button id="btn-sound" class="icon-btn" aria-label="Toggle sound"></button>
+    </header>
+    <ul id="preset-list" class="preset-list"></ul>
+    <button id="btn-new" class="big-btn">New preset</button>
+  </section>
+
+  <!-- Editor: create / edit a preset -->
+  <section id="view-editor" class="view">
+    <header class="editor-header">
+      <button id="btn-editor-back" class="icon-btn" aria-label="Back">&#8592;</button>
+      <h2 id="editor-title">New preset</h2>
+    </header>
+
+    <label class="name-field">
+      <span class="field-label">Name</span>
+      <input id="input-name" type="text" maxlength="24" autocomplete="off" placeholder="My workout">
+    </label>
+
+    <div class="stepper" data-field="work">
+      <span class="field-label">Active duration</span>
+      <div class="stepper-row">
+        <button class="step-btn" data-step="-5" aria-label="Decrease active duration">&minus;</button>
+        <output id="out-work">00:20</output>
+        <button class="step-btn" data-step="5" aria-label="Increase active duration">+</button>
+      </div>
+    </div>
+
+    <div class="stepper" data-field="rest">
+      <span class="field-label">Break duration</span>
+      <div class="stepper-row">
+        <button class="step-btn" data-step="-5" aria-label="Decrease break duration">&minus;</button>
+        <output id="out-rest">00:10</output>
+        <button class="step-btn" data-step="5" aria-label="Increase break duration">+</button>
+      </div>
+    </div>
+
+    <div class="stepper" data-field="rounds">
+      <span class="field-label">Rounds</span>
+      <div class="stepper-row">
+        <button class="step-btn" data-step="-1" aria-label="Decrease rounds">&minus;</button>
+        <output id="out-rounds">6</output>
+        <button class="step-btn" data-step="1" aria-label="Increase rounds">+</button>
+      </div>
+    </div>
+
+    <button id="btn-save" class="big-btn">Save preset</button>
+    <button id="btn-delete" class="text-btn danger" hidden>Delete preset</button>
+  </section>
+
+  <!-- Timer -->
+  <section id="view-timer" class="view">
+    <div id="fill" aria-hidden="true"></div>
+    <div class="timer-content">
+      <header class="timer-header">
+        <button id="btn-timer-close" class="icon-btn" aria-label="Exit workout">&#10005;</button>
+        <span id="timer-round" class="timer-round">1 / 6</span>
+      </header>
+      <div class="timer-middle">
+        <span id="timer-phase" class="timer-phase">Get ready</span>
+        <span id="timer-clock" class="timer-clock">00:05</span>
+      </div>
+      <div class="timer-controls">
+        <button id="btn-prev" class="ctrl-btn" aria-label="Previous interval">&#9198;</button>
+        <button id="btn-play" class="ctrl-btn ctrl-play" aria-label="Pause">&#10074;&#10074;</button>
+        <button id="btn-next" class="ctrl-btn" aria-label="Next interval">&#9197;</button>
+      </div>
+    </div>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>

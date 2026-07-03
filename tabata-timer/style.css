@@ -1,0 +1,353 @@
+:root {
+  --bg: #0e0f13;
+  --ink: #f5f3ee;
+  --ink-dim: #8b8e98;
+  --card: #1a1c23;
+  --line: #2a2d37;
+  --work: #ff4d3d;
+  --rest: #2dd4a7;
+  --prep: #ffb020;
+  --done: #7c8cff;
+  --display: "Archivo Black", system-ui, -apple-system, sans-serif;
+  --body: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body { height: 100%; }
+
+body {
+  font-family: var(--body);
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+:focus-visible { outline: 3px solid var(--prep); outline-offset: 2px; }
+
+.view {
+  display: none;
+  min-height: 100dvh;
+  padding: calc(env(safe-area-inset-top) + 16px) 20px calc(env(safe-area-inset-bottom) + 20px);
+  max-width: 480px;
+  margin: 0 auto;
+  flex-direction: column;
+}
+.view.active { display: flex; }
+
+.field-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+/* ---------- Home ---------- */
+
+.home-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+h1 {
+  font-family: var(--display);
+  font-size: 2rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.icon-btn {
+  min-width: 48px;
+  min-height: 48px;
+  font-size: 1.4rem;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+}
+.icon-btn:active { background: var(--card); }
+
+.preset-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+}
+
+.preset-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+}
+
+.preset-main {
+  flex: 1;
+  text-align: left;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 64px;
+}
+
+.preset-name {
+  font-family: var(--display);
+  font-size: 1.05rem;
+  letter-spacing: 0.01em;
+}
+
+.preset-meta { font-size: 0.95rem; color: var(--ink-dim); }
+.preset-meta .stat {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.preset-meta .stat-work { color: var(--work); }
+.preset-meta .stat-rest { color: var(--rest); }
+
+/* Tiny strip visualizing the work/rest pattern of the preset */
+.preset-strip {
+  display: flex;
+  gap: 2px;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.preset-strip i { border-radius: 1px; }
+.preset-strip .w { background: var(--work); }
+.preset-strip .r { background: var(--rest); }
+
+.preset-edit {
+  align-self: stretch;
+  padding: 0 18px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  border-left: 1px solid var(--line);
+  border-radius: 0 16px 16px 0;
+}
+.preset-edit:active { color: var(--ink); background: var(--line); }
+
+.empty-note {
+  color: var(--ink-dim);
+  text-align: center;
+  padding: 48px 0;
+}
+
+.big-btn {
+  min-height: 60px;
+  border-radius: 16px;
+  background: var(--ink);
+  color: var(--bg);
+  font-family: var(--display);
+  font-size: 1rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-top: 24px;
+}
+.big-btn:active { transform: scale(0.98); }
+
+.text-btn {
+  min-height: 48px;
+  margin-top: 8px;
+  font-weight: 600;
+}
+.text-btn.danger { color: var(--work); }
+
+/* ---------- Editor ---------- */
+
+.editor-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+h2 {
+  font-family: var(--display);
+  font-size: 1.3rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.name-field { display: block; margin-bottom: 24px; }
+
+.name-field input {
+  width: 100%;
+  margin-top: 8px;
+  padding: 14px 16px;
+  font: inherit;
+  font-size: 1.1rem;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.stepper { margin-bottom: 20px; }
+
+.stepper-row {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 8px;
+}
+
+.step-btn {
+  min-width: 64px;
+  min-height: 64px;
+  font-size: 1.8rem;
+  border-radius: 12px;
+  background: var(--line);
+}
+.step-btn:active { background: var(--ink-dim); }
+
+.stepper-row output {
+  flex: 1;
+  text-align: center;
+  font-family: var(--display);
+  font-size: 2rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Timer ---------- */
+
+#view-timer {
+  max-width: none;
+  padding: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+/* The whole screen is the progress bar: this layer drains as time runs out */
+#fill {
+  position: absolute;
+  inset: 0;
+  transform-origin: bottom;
+  transition: background-color 0.3s;
+}
+.phase-prep #fill { background: var(--prep); }
+.phase-work #fill { background: var(--work); }
+.phase-rest #fill { background: var(--rest); }
+.phase-done #fill { background: var(--done); transform: none !important; }
+
+.timer-content {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: calc(env(safe-area-inset-top) + 16px) 20px calc(env(safe-area-inset-bottom) + 28px);
+  max-width: 480px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.timer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.timer-round {
+  font-family: var(--display);
+  font-size: 1.2rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Text crosses the fill boundary, so it inverts against whatever is behind it */
+.timer-round,
+.timer-phase,
+.timer-clock {
+  color: #fff;
+  mix-blend-mode: difference;
+}
+
+/* Work crosses a bright-red bar and a dark background — the difference blend
+   turns cyan there and reads poorly. Give it a warm amber with a dark outline
+   so it stays legible on both without the muddy blend. */
+.phase-work .timer-round,
+.phase-work .timer-phase,
+.phase-work .timer-clock {
+  mix-blend-mode: normal;
+  color: #ffd23d;
+}
+
+.timer-middle {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.timer-phase {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+}
+
+.timer-clock {
+  font-family: var(--display);
+  font-size: clamp(5rem, 32vw, 10rem);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.timer-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+}
+
+.ctrl-btn {
+  min-width: 64px;
+  min-height: 64px;
+  font-size: 1.6rem;
+  border-radius: 50%;
+  background: rgba(14, 15, 19, 0.35);
+  color: var(--ink);
+}
+.ctrl-btn:active { transform: scale(0.94); }
+
+.ctrl-play {
+  min-width: 88px;
+  min-height: 88px;
+  font-size: 1.9rem;
+  background: var(--ink);
+  color: var(--bg);
+}
+
+#btn-timer-close {
+  background: rgba(14, 15, 19, 0.35);
+  color: var(--ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
