@@ -110,9 +110,7 @@
     background:var(--ink);z-index:2;pointer-events:none}
   .cell.bar-b::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;
     background:var(--ink);z-index:2;pointer-events:none}
-  /* ---- oplossingswoord: cirkelcellen + balk ---- */
-  .cell .solring{position:absolute;inset:5px;border:2px solid var(--accent);
-    border-radius:50%;pointer-events:none;z-index:1}
+  /* ---- oplossingswoord: genummerde cellen + balk ---- */
   .cell .solno{position:absolute;top:0;left:2px;font-family:var(--narrow);
     font-weight:700;font-size:calc(var(--cs)*.2);color:var(--accent-deep);
     line-height:1.1;z-index:2;pointer-events:none}
@@ -347,7 +345,6 @@ function render(){
         inputs.set(key(r,c),inp);
         const sn=solAt.get(key(r,c));
         if(sn){
-          const ring=document.createElement('span'); ring.className='solring'; el.appendChild(ring);
           const no=document.createElement('span'); no.className='solno'; no.textContent=sn; el.appendChild(no);
         }
       } else {
