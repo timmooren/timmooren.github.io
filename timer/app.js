@@ -66,10 +66,10 @@ function beep(freq, duration = 0.35, delay = 0, volume = 0.22) {
 // Pitched well below the usual cues (about two semitones up from a full
 // octave down), for a deep but not muddy chime
 const sounds = {
-  tick: () => beep(330, 0.2, 0, 0.15),                       // E4, quiet
-  workStart: () => { beep(294, 0.3); beep(440, 0.45, 0.12); }, // D4 → A4, rising
-  restStart: () => { beep(370, 0.3); beep(247, 0.5, 0.12); },  // F#4 → B3, falling
-  finish: () => { beep(294, 0.3); beep(370, 0.3, 0.18); beep(440, 0.7, 0.36); },
+  tick: () => beep(330, 0.2, 0, 0.25),                       // E4, quiet
+  workStart: () => { beep(294, 0.3, 0, 0.5); beep(440, 0.45, 0.12, 0.75); }, // D4 → A4, rising
+  restStart: () => { beep(370, 0.3, 0, 0.5); beep(247, 0.5, 0.12, 0.8); },  // F#4 → B3, falling
+  finish: () => { beep(294, 0.3, 0, 0.5); beep(370, 0.3, 0.18, 0.5); beep(440, 0.7, 0.36, 0.9); },
 };
 
 /* ---------- Views ---------- */
