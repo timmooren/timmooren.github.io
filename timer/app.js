@@ -14,7 +14,10 @@ function loadPresets() {
     const raw = JSON.parse(localStorage.getItem(STORE_KEY));
     if (Array.isArray(raw)) return raw;
   } catch (_) { /* corrupted storage: fall through to seed */ }
-  const seed = [{ id: crypto.randomUUID(), name: "Classic Tabata", ...DEFAULTS }];
+  const seed = [
+    { id: crypto.randomUUID(), name: "Classic Tabata", ...DEFAULTS },
+    { id: crypto.randomUUID(), name: "30/20", work: 30, rest: 20, rounds: 6 },
+  ];
   localStorage.setItem(STORE_KEY, JSON.stringify(seed));
   return seed;
 }
