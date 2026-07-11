@@ -17,7 +17,10 @@
   <section id="view-home" class="view active">
     <header class="home-header">
       <h1>Tabata</h1>
-      <button id="btn-sound" class="icon-btn" aria-label="Toggle sound"></button>
+      <div class="sound-controls">
+        <input id="input-volume" type="range" min="0" max="100" value="100" aria-label="Volume">
+        <button id="btn-sound" class="icon-btn" aria-label="Toggle sound"></button>
+      </div>
     </header>
     <ul id="preset-list" class="preset-list"></ul>
     <button id="btn-new" class="big-btn">New preset</button>
@@ -32,7 +35,7 @@
 
     <label class="name-field">
       <span class="field-label">Name</span>
-      <input id="input-name" type="text" maxlength="24" autocomplete="off" placeholder="My workout">
+      <input id="input-name" type="text" maxlength="60" autocomplete="off" placeholder="My workout">
     </label>
 
     <div class="stepper" data-field="work">

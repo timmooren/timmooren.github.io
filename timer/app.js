@@ -4,6 +4,7 @@
 
 const STORE_KEY = "tabata:presets";
 const SOUND_KEY = "tabata:sound";
+const VOLUME_KEY = "tabata:volume";
 
 const DEFAULTS = { work: 20, rest: 10, rounds: 6 };
 const PREP_SECONDS = 5;
@@ -27,7 +28,14 @@ let presets = loadPresets();
 /* ---------- Sound ---------- */
 
 let soundOn = localStorage.getItem(SOUND_KEY) !== "0";
+let masterVolume = clampVolume(localStorage.getItem(VOLUME_KEY)) / 100; // 0–1 multiplier
 let audioCtx = null;
+
+function clampVolume(raw) {
+  if (raw == null || raw === "") return 100; // default: full volume
+  const n = Number(raw);
+  return Number.isFinite(n) ? Math.min(100, Math.max(0, Math.round(n))) : 100;
+}
 
 function ensureAudio() {
   if (!soundOn) return;
@@ -38,26 +46,27 @@ function ensureAudio() {
 // Soft sine tone with a short attack and a long decay, so cues read as
 // "chime" rather than "alarm"
 function beep(freq, duration = 0.35, delay = 0, volume = 0.22) {
-  if (!soundOn || !audioCtx) return;
+  if (!soundOn || !audioCtx || masterVolume <= 0) return;
   const t = audioCtx.currentTime + delay;
   const osc = audioCtx.createOscillator();
   const gain = audioCtx.createGain();
   osc.type = "sine";
   osc.frequency.value = freq;
   gain.gain.setValueAtTime(0.0001, t);
-  gain.gain.exponentialRampToValueAtTime(volume, t + 0.02);
+  gain.gain.exponentialRampToValueAtTime(volume * masterVolume, t + 0.02);
   gain.gain.exponentialRampToValueAtTime(0.0001, t + duration);
   osc.connect(gain).connect(audioCtx.destination);
   osc.start(t);
   osc.stop(t + duration + 0.05);
 }
 
-// Pitched an octave down from the usual cues, for a deeper, mellower chime
+// Pitched well below the usual cues (about two semitones up from a full
+// octave down), for a deep but not muddy chime
 const sounds = {
-  tick: () => beep(294, 0.2, 0, 0.15),                       // D4, quiet
-  workStart: () => { beep(262, 0.3); beep(392, 0.45, 0.12); }, // C4 → G4, rising
-  restStart: () => { beep(330, 0.3); beep(220, 0.5, 0.12); },  // E4 → A3, falling
-  finish: () => { beep(262, 0.3); beep(330, 0.3, 0.18); beep(392, 0.7, 0.36); },
+  tick: () => beep(330, 0.2, 0, 0.15),                       // E4, quiet
+  workStart: () => { beep(294, 0.3); beep(440, 0.45, 0.12); }, // D4 → A4, rising
+  restStart: () => { beep(370, 0.3); beep(247, 0.5, 0.12); },  // F#4 → B3, falling
+  finish: () => { beep(294, 0.3); beep(370, 0.3, 0.18); beep(440, 0.7, 0.36); },
 };
 
 /* ---------- Views ---------- */
@@ -83,6 +92,7 @@ function fmt(seconds) {
 
 const presetList = document.getElementById("preset-list");
 const btnSound = document.getElementById("btn-sound");
+const inputVolume = document.getElementById("input-volume");
 
 function renderSoundBtn() {
   btnSound.textContent = soundOn ? "\u{1F50A}" : "\u{1F507}";
@@ -92,6 +102,12 @@ btnSound.addEventListener("click", () => {
   soundOn = !soundOn;
   localStorage.setItem(SOUND_KEY, soundOn ? "1" : "0");
   renderSoundBtn();
+});
+
+inputVolume.addEventListener("input", () => {
+  const value = clampVolume(inputVolume.value);
+  masterVolume = value / 100;
+  localStorage.setItem(VOLUME_KEY, String(value));
 });
 
 function renderHome() {
@@ -346,7 +362,7 @@ function finishWorkout() {
   sounds.finish();
   timerView.className = "view active phase-done";
   elPhase.textContent = PHASE_LABELS.done;
-  elClock.textContent = "0";
+  elClock.hidden = true;
   elRound.textContent = `${timer.totalRounds} / ${timer.totalRounds}`;
   btnPlay.textContent = "\u21BB";
   btnPlay.setAttribute("aria-label", "Restart workout");
@@ -356,6 +372,7 @@ function finishWorkout() {
 function renderTimer() {
   const seg = timer.segments[timer.index];
   const remaining = Math.max(0, seg.duration - currentElapsed());
+  elClock.hidden = false;
   elClock.textContent = String(Math.ceil(remaining));
   elPhase.textContent = PHASE_LABELS[seg.type];
   elRound.textContent = `${seg.round} / ${timer.totalRounds}`;
@@ -417,4 +434,5 @@ document.addEventListener("visibilitychange", () => {
 /* ---------- Init ---------- */
 
 renderSoundBtn();
+inputVolume.value = String(Math.round(masterVolume * 100));
 renderHome();

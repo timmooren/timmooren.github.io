@@ -18,6 +18,7 @@ html, body { height: 100%; }
 
 body {
   font-family: var(--body);
+  font-size: 1.2rem;
   background: var(--bg);
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
@@ -47,7 +48,7 @@ button {
 
 .field-label {
   display: block;
-  font-size: 0.75rem;
+  font-size: 0.9rem;
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -65,15 +66,61 @@ button {
 
 h1 {
   font-family: var(--display);
-  font-size: 2rem;
+  font-size: 2.4rem;
   letter-spacing: 0.02em;
   text-transform: uppercase;
+}
+
+/* Volume slider + sound toggle, kept compact so the header fits small phones */
+.sound-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#input-volume {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 88px;
+  height: 28px;
+  background: none;
+}
+#input-volume::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--line);
+}
+#input-volume::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: -7px;
+  border-radius: 50%;
+  background: var(--ink);
+  border: none;
+}
+#input-volume::-moz-range-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--line);
+}
+#input-volume::-moz-range-progress {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--prep);
+}
+#input-volume::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--ink);
+  border: none;
 }
 
 .icon-btn {
   min-width: 48px;
   min-height: 48px;
-  font-size: 1.4rem;
+  font-size: 1.7rem;
   display: grid;
   place-items: center;
   border-radius: 12px;
@@ -108,11 +155,12 @@ h1 {
 
 .preset-name {
   font-family: var(--display);
-  font-size: 1.05rem;
+  font-size: 1.25rem;
   letter-spacing: 0.01em;
+  overflow-wrap: anywhere;
 }
 
-.preset-meta { font-size: 0.95rem; color: var(--ink-dim); }
+.preset-meta { font-size: 1.15rem; color: var(--ink-dim); }
 .preset-meta .stat {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -136,7 +184,7 @@ h1 {
 .preset-edit {
   align-self: stretch;
   padding: 0 18px;
-  font-size: 0.8rem;
+  font-size: 0.95rem;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -158,7 +206,7 @@ h1 {
   background: var(--ink);
   color: var(--bg);
   font-family: var(--display);
-  font-size: 1rem;
+  font-size: 1.2rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   margin-top: 24px;
@@ -183,7 +231,7 @@ h1 {
 
 h2 {
   font-family: var(--display);
-  font-size: 1.3rem;
+  font-size: 1.55rem;
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
@@ -195,7 +243,7 @@ h2 {
   margin-top: 8px;
   padding: 14px 16px;
   font: inherit;
-  font-size: 1.1rem;
+  font-size: 1.3rem;
   color: var(--ink);
   background: var(--card);
   border: 1px solid var(--line);
@@ -218,7 +266,7 @@ h2 {
 .step-btn {
   min-width: 64px;
   min-height: 64px;
-  font-size: 1.8rem;
+  font-size: 2.2rem;
   border-radius: 12px;
   background: var(--line);
 }
@@ -228,7 +276,7 @@ h2 {
   flex: 1;
   text-align: center;
   font-family: var(--display);
-  font-size: 2rem;
+  font-size: 2.4rem;
   font-variant-numeric: tabular-nums;
 }
 
@@ -274,7 +322,7 @@ h2 {
 
 .timer-round {
   font-family: var(--display);
-  font-size: 1.2rem;
+  font-size: 1.8rem;
   font-variant-numeric: tabular-nums;
 }
 
@@ -306,7 +354,7 @@ h2 {
 }
 
 .timer-phase {
-  font-size: 1rem;
+  font-size: 1.8rem;
   font-weight: 700;
   letter-spacing: 0.25em;
   text-transform: uppercase;
@@ -314,10 +362,18 @@ h2 {
 
 .timer-clock {
   font-family: var(--display);
-  font-size: clamp(5rem, 32vw, 10rem);
+  font-size: clamp(7rem, 44vw, 14rem);
   line-height: 1;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
+}
+
+/* Done screen: phase label takes clock's place, rendered huge */
+.phase-done .timer-phase {
+  font-family: var(--display);
+  font-size: clamp(3.5rem, 20vw, 7rem);
+  letter-spacing: 0.05em;
+  line-height: 1;
 }
 
 .timer-controls {
@@ -330,7 +386,7 @@ h2 {
 .ctrl-btn {
   min-width: 64px;
   min-height: 64px;
-  font-size: 1.6rem;
+  font-size: 1.9rem;
   border-radius: 50%;
   background: rgba(14, 15, 19, 0.35);
   color: var(--ink);
@@ -340,7 +396,7 @@ h2 {
 .ctrl-play {
   min-width: 88px;
   min-height: 88px;
-  font-size: 1.9rem;
+  font-size: 2.3rem;
   background: var(--ink);
   color: var(--bg);
 }
