@@ -61,7 +61,7 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 
 h1 {
@@ -71,17 +71,18 @@ h1 {
   text-transform: uppercase;
 }
 
-/* Volume slider + sound toggle, kept compact so the header fits small phones */
+/* Sound-toggle button on the left, volume slider filling the rest of the row */
 .sound-controls {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 12px;
+  margin-bottom: 24px;
 }
 
 #input-volume {
   -webkit-appearance: none;
   appearance: none;
-  width: 88px;
+  flex: 1;
   height: 28px;
   background: none;
 }
