@@ -33,6 +33,7 @@ let presets = loadPresets();
 let soundOn = localStorage.getItem(SOUND_KEY) !== "0";
 let masterVolume = clampVolume(localStorage.getItem(VOLUME_KEY)) / 100; // 0–1 multiplier
 let audioCtx = null;
+let output = null; // boost + soft-clip chain; beeps connect here, not to destination
 
 function clampVolume(raw) {
   if (raw == null || raw === "") return 100; // default: full volume
@@ -42,7 +43,25 @@ function clampVolume(raw) {
 
 function ensureAudio() {
   if (!soundOn) return;
-  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    // 2x boost into a tanh soft-clipper: ~7 dB louder at max volume than a
+    // bare sine can get, with the clipper keeping overlapping beeps from
+    // hard-clipping (adds a touch of warmth instead)
+    const shaper = audioCtx.createWaveShaper();
+    const n = 1024;
+    const curve = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      const x = (i / (n - 1)) * 2 - 1;
+      curve[i] = Math.tanh(1.5 * x) / Math.tanh(1.5);
+    }
+    shaper.curve = curve;
+    shaper.oversample = "2x";
+    shaper.connect(audioCtx.destination);
+    output = audioCtx.createGain();
+    output.gain.value = 2;
+    output.connect(shaper);
+  }
   if (audioCtx.state === "suspended") audioCtx.resume();
 }
 
@@ -58,7 +77,7 @@ function beep(freq, duration = 0.35, delay = 0, volume = 0.22) {
   gain.gain.setValueAtTime(0.0001, t);
   gain.gain.exponentialRampToValueAtTime(volume * masterVolume, t + 0.02);
   gain.gain.exponentialRampToValueAtTime(0.0001, t + duration);
-  osc.connect(gain).connect(audioCtx.destination);
+  osc.connect(gain).connect(output);
   osc.start(t);
   osc.stop(t + duration + 0.05);
 }
