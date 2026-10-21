@@ -72,9 +72,13 @@
 
       <div id="tab-patterns" role="tabpanel" aria-labelledby="tab-btn-patterns" hidden>
         <div class="pattern-detail">
+          <div id="level-seg" class="segmented" role="radiogroup" aria-label="Level">
+            <button role="radio" data-level="Beginner" aria-checked="true">Beginner</button>
+            <button role="radio" data-level="Intermediate" aria-checked="false">Intermediate</button>
+            <button role="radio" data-level="Advanced" aria-checked="false">Advanced</button>
+          </div>
           <div class="pattern-title">
             <select id="pat-select" class="select" aria-label="Playing pattern"></select>
-            <span id="pat-level" class="level"></span>
           </div>
           <label id="chord-row" class="chord-row" hidden>
             <span class="field-label">Chord</span>

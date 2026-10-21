@@ -256,6 +256,7 @@
     tab: load('tab', 'explore'),
     selIndex: 0,
     patKey: 'p0', // 'p<n>' = pattern n, 'g<n>' = chord groove n
+    level: load('level', 'Beginner'),
     mirrored: load('mirrored', false),
     tempo: load('tempo', 88),
     loop: load('loop', true),
@@ -429,8 +430,6 @@
       o.g.classList.toggle('sel', used.has(o) && !isRoot);
       o.g.classList.toggle('dim', !used.has(o));
     });
-    $('pat-level').textContent = pat.level;
-    $('pat-level').dataset.level = pat.level.toLowerCase();
     $('chord-row').hidden = !pat.chord;
     if (pat.chord) {
       $('chord-select').value = String(grooveChord());
@@ -487,21 +486,7 @@
       b.addEventListener('click', () => { stopPlayback(); state.selIndex = i; paintSelection(); });
       chips.appendChild(b);
     });
-    const patSelect = $('pat-select');
-    patSelect.textContent = '';
-    const group = (label, items, prefix) => {
-      const og = document.createElement('optgroup');
-      og.label = label;
-      items.forEach((pat, i) => {
-        const opt = document.createElement('option');
-        opt.value = prefix + i;
-        opt.textContent = pat.name;
-        og.appendChild(opt);
-      });
-      patSelect.appendChild(og);
-    };
-    group('Patterns', T.patterns, 'p');
-    if (T.chords.length) group('Chord grooves', GROOVES, 'g');
+    fillPatternSelect();
     const chordSelect = $('chord-select');
     chordSelect.textContent = '';
     T.chords.forEach((i) => {
@@ -510,6 +495,31 @@
       opt.textContent = T.selections[i].name;
       chordSelect.appendChild(opt);
     });
+  }
+
+  // Pattern dropdown only lists patterns of the chosen level.
+  function fillPatternSelect() {
+    const T = state.tuning;
+    const patSelect = $('pat-select');
+    patSelect.textContent = '';
+    const keys = [];
+    const group = (label, items, prefix) => {
+      const og = document.createElement('optgroup');
+      og.label = label;
+      items.forEach((pat, i) => {
+        if (pat.level !== state.level) return;
+        const opt = document.createElement('option');
+        opt.value = prefix + i;
+        opt.textContent = pat.name;
+        og.appendChild(opt);
+        keys.push(opt.value);
+      });
+      if (og.children.length) patSelect.appendChild(og);
+    };
+    group('Patterns', T.patterns, 'p');
+    if (T.chords.length) group('Chord grooves', GROOVES, 'g');
+    if (!keys.includes(state.patKey)) state.patKey = keys[0];
+    document.querySelectorAll('#level-seg button').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.level === state.level)));
   }
 
   function setTab(tab) {
@@ -652,6 +662,13 @@
     $('tab-btn-patterns').addEventListener('click', () => setTab('patterns'));
     $('btn-play-sel').addEventListener('click', playSelection);
     $('btn-play-pat').addEventListener('click', () => playPattern());
+    document.querySelectorAll('#level-seg button').forEach((b) => b.addEventListener('click', () => {
+      stopPlayback();
+      state.level = b.dataset.level;
+      save('level', state.level);
+      fillPatternSelect();
+      if (state.tab === 'patterns') paintPattern();
+    }));
     $('pat-select').addEventListener('change', (e) => { stopPlayback(); state.patKey = e.target.value; paintPattern(); });
     $('chord-select').addEventListener('change', (e) => { stopPlayback(); state.selIndex = Number(e.target.value); paintPattern(); });
     $('btn-fab').addEventListener('click', playCurrent);
