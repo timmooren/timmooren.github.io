@@ -22,7 +22,7 @@
     <div class="header-controls">
       <label class="tuning-picker">
         <span class="field-label">Tuning</span>
-        <select id="tuning-select" aria-label="Handpan tuning"></select>
+        <select id="tuning-select" class="select" aria-label="Handpan tuning"></select>
       </label>
     </div>
   </header>
@@ -71,10 +71,9 @@
       </div>
 
       <div id="tab-patterns" role="tabpanel" aria-labelledby="tab-btn-patterns" hidden>
-        <div id="pat-list" class="pattern-list"></div>
         <div class="pattern-detail">
           <div class="pattern-title">
-            <h3 id="pat-name"></h3>
+            <select id="pat-select" class="select" aria-label="Playing pattern"></select>
             <span id="pat-level" class="level"></span>
           </div>
           <p id="pat-desc" class="desc"></p>

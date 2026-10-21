@@ -399,7 +399,6 @@
       o.g.classList.toggle('sel', used.has(o) && !o.isDing);
       o.g.classList.toggle('dim', !used.has(o));
     });
-    $('pat-name').textContent = pat.name;
     $('pat-level').textContent = pat.level;
     $('pat-level').dataset.level = pat.level.toLowerCase();
     $('pat-desc').textContent = pat.desc;
@@ -433,7 +432,7 @@
       li.appendChild(btn);
       list.appendChild(li);
     });
-    [...$('pat-list').children].forEach((b, i) => b.setAttribute('aria-pressed', String(i === state.patIndex)));
+    $('pat-select').value = String(state.patIndex);
   }
 
   function paint() {
@@ -451,18 +450,13 @@
       b.addEventListener('click', () => { stopPlayback(); state.selIndex = i; paintSelection(); });
       chips.appendChild(b);
     });
-    const list = $('pat-list');
-    list.textContent = '';
+    const patSelect = $('pat-select');
+    patSelect.textContent = '';
     T.patterns.forEach((pat, i) => {
-      const b = document.createElement('button');
-      b.className = 'pattern-item';
-      const name = document.createElement('span');
-      name.textContent = pat.name;
-      const lvl = document.createElement('small');
-      lvl.textContent = pat.level;
-      b.append(name, lvl);
-      b.addEventListener('click', () => { stopPlayback(); state.patIndex = i; paintPattern(); });
-      list.appendChild(b);
+      const opt = document.createElement('option');
+      opt.value = String(i);
+      opt.textContent = pat.name;
+      patSelect.appendChild(opt);
     });
   }
 
@@ -606,6 +600,7 @@
     $('tab-btn-patterns').addEventListener('click', () => setTab('patterns'));
     $('btn-play-sel').addEventListener('click', playSelection);
     $('btn-play-pat').addEventListener('click', () => playPattern());
+    $('pat-select').addEventListener('change', (e) => { stopPlayback(); state.patIndex = Number(e.target.value); paintPattern(); });
     $('btn-fab').addEventListener('click', playCurrent);
 
     const tempo = $('input-tempo');
