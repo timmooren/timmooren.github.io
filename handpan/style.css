@@ -89,7 +89,6 @@ button { cursor: pointer; }
   letter-spacing: -0.02em;
 }
 
-.brand p { margin: 6px 0 0; color: var(--text-2); }
 
 .header-controls { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
 
@@ -105,7 +104,7 @@ button { cursor: pointer; }
   font-weight: 500;
 }
 
-.sound-controls { display: flex; align-items: center; gap: 8px; height: 44px; }
+.sound-controls { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
 
 .icon-btn {
   width: 40px; height: 40px;
