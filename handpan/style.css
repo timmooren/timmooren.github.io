@@ -108,7 +108,10 @@ button { cursor: pointer; }
   font-weight: 500;
 }
 
-.sound-controls { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.sound-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 12px; }
+.ref-pitch { display: flex; align-items: center; gap: 10px; margin-left: 12px; }
+@media (max-width: 480px) { .ref-pitch { margin-left: 0; } }
+.select.select-small { min-width: 0; padding: 7px 34px 7px 12px; font-size: 13px; color: var(--text); }
 
 .icon-btn {
   width: 40px; height: 40px;

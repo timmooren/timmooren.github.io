@@ -27,7 +27,10 @@
     return 12 * (Number(m[3]) + 1) + LETTER_PC[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0);
   }
   const pc = (midi) => ((midi % 12) + 12) % 12;
-  const hz = (midi) => 440 * Math.pow(2, (midi - 69) / 12);
+  // Reference pitch for A4; 432 Hz is a popular handpan tuning.
+  const REF_HZ = [432, 440, 442];
+  let refHz = REF_HZ.includes(load('refHz', 440)) ? load('refHz', 440) : 440;
+  const hz = (midi) => refHz * Math.pow(2, (midi - 69) / 12);
   const pitchClass = (name) => name.replace(/-?\d$/, '');
   // Tone field size follows pitch: low notes need big fields.
   const fieldRadius = (midi) => Math.min(38, Math.max(22, 37 - (midi - 51) * 0.58));
@@ -862,6 +865,15 @@
     const vol = $('input-volume');
     vol.value = audio.volume;
     vol.addEventListener('input', () => { audio.volume = Number(vol.value); save('volume', audio.volume); applyVolume(); });
+    const refSelect = $('select-ref');
+    REF_HZ.forEach((v) => {
+      const opt = document.createElement('option');
+      opt.value = String(v);
+      opt.textContent = 'A4 = ' + v + ' Hz';
+      refSelect.appendChild(opt);
+    });
+    refSelect.value = String(refHz);
+    refSelect.addEventListener('change', () => { refHz = Number(refSelect.value); save('refHz', refHz); });
     $('btn-mute').addEventListener('click', () => { audio.muted = !audio.muted; save('muted', audio.muted); renderMute(); applyVolume(); });
     renderMute();
 
