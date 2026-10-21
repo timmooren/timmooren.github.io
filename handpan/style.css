@@ -289,7 +289,7 @@ section {
   background: transparent;
   font-weight: 500;
 }
-.secondary-btn:hover { border-color: var(--accent-text); color: var(--accent-text); }
+@media (hover: hover) { .secondary-btn:hover { border-color: var(--accent-text); color: var(--accent-text); } }
 .secondary-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.6; }
 .secondary-btn svg circle { fill: currentColor; stroke: none; }
 option.unavailable, option:disabled { color: var(--text-3); }
