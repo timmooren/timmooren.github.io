@@ -5,7 +5,7 @@
   --border: #2f333d;
   --text: #ece9e3;
   --text-2: #a9a69f;
-  --text-3: #75736e;
+  --text-3: #8f8c85;
   --accent: #1d9e75;
   --accent-soft: rgba(29, 158, 117, 0.16);
   --root: #d85a30;
@@ -30,7 +30,7 @@
     --border: #ddd7cb;
     --text: #22211e;
     --text-2: #5c5952;
-    --text-3: #8b877e;
+    --text-3: #6b675f;
     --accent: #13805e;
     --accent-soft: rgba(19, 128, 94, 0.12);
     --root: #c24b22;
@@ -203,7 +203,7 @@ section {
 .field .dimple { fill: none; stroke: rgba(255, 255, 255, 0.07); stroke-width: 1; pointer-events: none; }
 .field.ding .dimple { stroke: rgba(255, 255, 255, 0.12); }
 .note-label { fill: var(--field-text); font-weight: 600; pointer-events: none; font-family: var(--font); }
-.note-num { fill: var(--field-text); opacity: 0.6; pointer-events: none; font-family: var(--font); font-weight: 500; }
+.note-num { fill: var(--field-text); opacity: 0.78; pointer-events: none; font-family: var(--font); font-weight: 500; }
 
 .field.sel circle:first-child { fill: var(--accent); stroke: rgba(255, 255, 255, 0.35); }
 .field.root circle:first-child { fill: var(--root); stroke: rgba(255, 255, 255, 0.35); }
