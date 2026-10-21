@@ -528,9 +528,15 @@
   // Pattern dropdown only lists patterns of the chosen level. The current
   // pattern stays selected when it still fits.
   function fillPatternSelect() {
+    // Hide levels with nothing to play (Double only exists on pans with a
+    // bottom), and fall back to the first level that has patterns.
+    const levels = [...document.querySelectorAll('#level-seg button')];
+    levels.forEach((b) => { b.hidden = !state.patterns.some((p) => p.level === b.dataset.level); });
+    const shown = levels.filter((b) => !b.hidden).map((b) => b.dataset.level);
+    const level = shown.includes(state.level) ? state.level : shown[0];
     const patSelect = $('pat-select');
     patSelect.textContent = '';
-    const fits = state.patterns.filter((p) => p.level === state.level);
+    const fits = state.patterns.filter((p) => p.level === level);
     fits.forEach((p) => {
       const opt = document.createElement('option');
       opt.value = p.name;
@@ -539,7 +545,7 @@
     });
     if (!fits.some((p) => p.name === state.patName)) state.patName = fits.length ? fits[0].name : null;
     patSelect.value = state.patName || '';
-    document.querySelectorAll('#level-seg button').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.level === state.level)));
+    levels.forEach((b) => b.setAttribute('aria-checked', String(b.dataset.level === level)));
   }
 
   function stepLabel(o) {

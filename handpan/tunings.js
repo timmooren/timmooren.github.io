@@ -129,7 +129,7 @@ window.HANDPAN_TUNINGS = [
       {
         name: 'Bottom bloom',
         scaleOnly: true,
-        level: 'Advanced',
+        level: 'Double',
         steps: 'D G3 3 G4 6 B4 . T D Eb3 5 Ab3 6 E5 . T',
         desc: 'Alternate top fields with bottom notes to play E minor, then a bright E major. Reach under with one hand.',
       },

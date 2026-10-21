@@ -284,7 +284,7 @@ section {
 
 .panel .select { width: 100%; min-width: 0; }
 
-.segmented { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.segmented { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; }
 .segmented button {
   padding: 7px 6px;
   border: 1px solid var(--border); border-radius: 999px;
@@ -292,6 +292,8 @@ section {
   font-size: 13px; color: var(--text-2);
 }
 .segmented button[aria-checked="true"] { background: var(--accent-soft); border-color: var(--accent-text); color: var(--accent-text); font-weight: 600; }
+@media (max-width: 420px) { .segmented button { padding: 7px 2px; font-size: 12px; } }
+@media (max-width: 360px) { .segmented { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 .steps {
   list-style: none; margin: 14px 0 0; padding: 0;
