@@ -370,10 +370,20 @@
     }
   }
 
-  // Run fn when the audio clock reaches `when`, so visuals line up with sound.
+  // Run fn when audio scheduled at `when` is actually heard. Sound leaves the
+  // speakers well after the audio clock's "now" (output latency: tens of ms
+  // on built-in speakers, 150+ ms on Bluetooth), so visuals timed to the clock
+  // alone light up early.
   function at(when, fn) {
-    const ms = Math.max(0, (when - audio.ctx.currentTime) * 1000);
-    return setTimeout(fn, ms);
+    const ctx = audio.ctx;
+    const ts = ctx.getOutputTimestamp ? ctx.getOutputTimestamp() : null;
+    let ms;
+    if (ts && ts.contextTime > 0 && ts.performanceTime > 0) {
+      ms = ts.performanceTime + (when - ts.contextTime) * 1000 - performance.now();
+    } else {
+      ms = (when - ctx.currentTime + (ctx.outputLatency || ctx.baseLatency || 0)) * 1000;
+    }
+    return setTimeout(fn, Math.max(0, ms));
   }
 
   // ---------- state ----------
