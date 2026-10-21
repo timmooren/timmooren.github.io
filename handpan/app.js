@@ -405,29 +405,32 @@
     $('pat-desc').textContent = pat.desc;
     const list = $('pat-steps');
     list.textContent = '';
-    pat.parsed.forEach((s) => {
+    pat.parsed.forEach((s, i) => {
       const li = document.createElement('li');
-      li.className = 'step step-' + s.kind;
+      // Each step is a button: clicking it starts playback from that step.
+      const btn = document.createElement('button');
+      btn.className = 'step step-' + s.kind;
       const main = document.createElement('span');
       main.className = 'step-main';
       const sub = document.createElement('span');
       sub.className = 'step-sub';
-      if (s.kind === 'rest') { main.textContent = '·'; sub.textContent = ' '; li.setAttribute('aria-label', 'rest'); }
-      else if (s.kind === 'tak') { main.textContent = 'T'; sub.textContent = s.hand; li.setAttribute('aria-label', 'tak, ' + s.hand); }
+      let label;
+      if (s.kind === 'rest') { main.textContent = '·'; sub.textContent = '\u00a0'; label = 'rest'; btn.append(main, sub); }
+      else if (s.kind === 'tak') { main.textContent = 'T'; sub.textContent = s.hand; label = 'tak, ' + s.hand; btn.append(main, sub); }
       else {
         main.textContent = s.notes.map((o) => o.num || o.name).join('+');
         const names = s.notes.map((o) => o.name).join('+');
         sub.textContent = s.hand;
-        li.title = names;
-        li.setAttribute('aria-label', names + ', ' + s.hand);
+        label = names + ', ' + s.hand;
         const nm = document.createElement('span');
         nm.className = 'step-note';
         nm.textContent = names;
-        li.append(main, nm, sub);
-        list.appendChild(li);
-        return;
+        btn.append(main, nm, sub);
       }
-      li.append(main, sub);
+      btn.setAttribute('aria-label', 'Play from step ' + (i + 1) + ': ' + label);
+      btn.title = 'Play from here';
+      btn.addEventListener('click', () => { stopPlayback(); playPattern(i); });
+      li.appendChild(btn);
       list.appendChild(li);
     });
     [...$('pat-list').children].forEach((b, i) => b.setAttribute('aria-pressed', String(i === state.patIndex)));
@@ -524,12 +527,12 @@
     updatePlayButtons();
   }
 
-  function playPattern() {
+  function playPattern(from) {
     if (state.playing) { const was = state.playing.kind; stopPlayback(); if (was === 'pat') return; }
     const ctx = ac();
     const steps = state.tuning.patterns[state.patIndex].parsed;
-    const chips = [...$('pat-steps').children];
-    const p = { kind: 'pat', timers: [], next: 0, time: ctx.currentTime + 0.08 };
+    const chips = [...$('pat-steps').querySelectorAll('.step')];
+    const p = { kind: 'pat', timers: [], next: from || 0, time: ctx.currentTime + 0.08 };
     // Lookahead scheduler: queue audio slightly ahead so tempo stays steady.
     const tick = () => {
       const stepDur = 60 / state.tempo / 2;
@@ -602,7 +605,7 @@
     $('tab-btn-explore').addEventListener('click', () => setTab('explore'));
     $('tab-btn-patterns').addEventListener('click', () => setTab('patterns'));
     $('btn-play-sel').addEventListener('click', playSelection);
-    $('btn-play-pat').addEventListener('click', playPattern);
+    $('btn-play-pat').addEventListener('click', () => playPattern());
     $('btn-fab').addEventListener('click', playCurrent);
 
     const tempo = $('input-tempo');
