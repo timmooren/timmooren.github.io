@@ -732,6 +732,13 @@
     });
     select.addEventListener('change', () => setTuning(select.value, true));
 
+    // Tuning details live in a pop-up under the title.
+    const info = $('tuning-info');
+    const infoBtn = $('btn-tuning-info');
+    const showInfo = (open) => { info.hidden = !open; infoBtn.setAttribute('aria-expanded', String(open)); };
+    infoBtn.addEventListener('click', (e) => { e.stopPropagation(); showInfo(info.hidden); });
+    document.addEventListener('click', (e) => { if (!info.hidden && !info.contains(e.target)) showInfo(false); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !info.hidden) { showInfo(false); infoBtn.focus(); } });
     $('btn-mirror').addEventListener('click', () => { state.mirrored = !state.mirrored; save('mirrored', state.mirrored); layout(); });
     $('btn-play-pat').addEventListener('click', () => playPattern());
     document.querySelectorAll('#level-seg button').forEach((b) => b.addEventListener('click', () => {

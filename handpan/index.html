@@ -30,9 +30,16 @@
   <main>
     <section class="instrument" aria-labelledby="tuning-name">
       <div class="tuning-head">
-        <h2 id="tuning-name"></h2>
-        <p id="tuning-notes" class="tuning-notes"></p>
-        <p id="tuning-mood" class="tuning-mood"></p>
+        <h2>
+          <button id="btn-tuning-info" class="tuning-title" aria-expanded="false" aria-controls="tuning-info">
+            <span id="tuning-name"></span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.6v.1"/></svg>
+          </button>
+        </h2>
+        <div id="tuning-info" class="tuning-info" role="dialog" aria-label="About this tuning" hidden>
+          <p id="tuning-notes" class="tuning-notes"></p>
+          <p id="tuning-mood" class="tuning-mood"></p>
+        </div>
       </div>
 
       <div class="pans" id="pans">
@@ -58,13 +65,13 @@
 
     <section class="panel" aria-label="Practice">
       <div class="panel-step">
-        <h2 class="field-label">1 · Play over</h2>
+        <p class="field-label">1 · Play over</p>
         <div id="sel-chips" class="chips"></div>
         <p id="sel-desc" class="desc"></p>
       </div>
 
       <div class="panel-step">
-        <h2 class="field-label">2 · Level</h2>
+        <p class="field-label">2 · Level</p>
         <div id="level-seg" class="segmented" role="radiogroup" aria-label="Level">
           <button role="radio" data-level="Beginner" aria-checked="true">Beginner</button>
           <button role="radio" data-level="Intermediate" aria-checked="false">Intermediate</button>
@@ -73,7 +80,7 @@
       </div>
 
       <div class="panel-step">
-        <h2 class="field-label">3 · Pattern</h2>
+        <p class="field-label">3 · Pattern</p>
         <select id="pat-select" class="select" aria-label="Playing pattern"></select>
         <p id="pat-desc" class="desc"></p>
         <ol id="pat-steps" class="steps" aria-label="Pattern steps"></ol>
