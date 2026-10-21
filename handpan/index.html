@@ -28,40 +28,6 @@
   </header>
 
   <main>
-    <section class="instrument" aria-labelledby="tuning-name">
-      <div class="tuning-head">
-        <h2>
-          <button id="btn-tuning-info" class="tuning-title" aria-expanded="false" aria-controls="tuning-info">
-            <span id="tuning-name"></span>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.6v.1"/></svg>
-          </button>
-        </h2>
-        <div id="tuning-info" class="tuning-info" role="dialog" aria-label="About this tuning" hidden>
-          <p id="tuning-notes" class="tuning-notes"></p>
-          <p id="tuning-mood" class="tuning-mood"></p>
-        </div>
-      </div>
-
-      <div class="pans" id="pans">
-        <figure class="pan">
-          <figcaption><span>Top</span></figcaption>
-          <svg id="svg-top" viewBox="0 0 340 330" role="img" aria-label="Top of handpan"></svg>
-        </figure>
-        <figure class="pan" id="fig-bottom">
-          <figcaption>
-            <span id="bottom-view">Bottom, seen from below</span>
-            <button id="btn-mirror" class="small-btn" aria-pressed="false">Mirror</button>
-          </figcaption>
-          <svg id="svg-bottom" viewBox="0 0 340 330" role="img" aria-label="Bottom of handpan"></svg>
-        </figure>
-      </div>
-
-      <div class="legend">
-        <span><i class="dot dot-root"></i>Root / home</span>
-        <span><i class="dot dot-sel"></i>In selection</span>
-        <span><i class="dot dot-shell"></i>Tap the shell for a tak</span>
-      </div>
-    </section>
 
     <section class="panel" aria-label="Practice">
       <div class="panel-step">
@@ -104,6 +70,41 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3.5"/><circle cx="9" cy="9" r="1.2"/><circle cx="15" cy="15" r="1.2"/><circle cx="15" cy="9" r="1.2"/><circle cx="9" cy="15" r="1.2"/><circle cx="12" cy="12" r="1.2"/></svg>
           Random combination
         </button>
+      </div>
+    </section>
+
+    <section class="instrument" aria-labelledby="tuning-name">
+      <div class="tuning-head">
+        <h2>
+          <button id="btn-tuning-info" class="tuning-title" aria-expanded="false" aria-controls="tuning-info">
+            <span id="tuning-name"></span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.6v.1"/></svg>
+          </button>
+        </h2>
+        <div id="tuning-info" class="tuning-info" role="dialog" aria-label="About this tuning" hidden>
+          <p id="tuning-notes" class="tuning-notes"></p>
+          <p id="tuning-mood" class="tuning-mood"></p>
+        </div>
+      </div>
+
+      <div class="pans" id="pans">
+        <figure class="pan">
+          <figcaption><span>Top</span></figcaption>
+          <svg id="svg-top" viewBox="0 0 340 330" role="img" aria-label="Top of handpan"></svg>
+        </figure>
+        <figure class="pan" id="fig-bottom">
+          <figcaption>
+            <span id="bottom-view">Bottom, seen from below</span>
+            <button id="btn-mirror" class="small-btn" aria-pressed="false">Mirror</button>
+          </figcaption>
+          <svg id="svg-bottom" viewBox="0 0 340 330" role="img" aria-label="Bottom of handpan"></svg>
+        </figure>
+      </div>
+
+      <div class="legend">
+        <span><i class="dot dot-root"></i>Root / home</span>
+        <span><i class="dot dot-sel"></i>In selection</span>
+        <span><i class="dot dot-shell"></i>Tap the shell for a tak</span>
       </div>
     </section>
 

@@ -653,7 +653,15 @@
     n.className = 'note-list';
     n.textContent = names.join(' · ');
     $('sel-desc').append(d, n);
-    [...$('sel-chips').children].forEach((b, i) => b.setAttribute('aria-pressed', String(i === state.selIndex)));
+    const chips = $('sel-chips');
+    [...chips.children].forEach((b, i) => b.setAttribute('aria-pressed', String(i === state.selIndex)));
+    // On phones the chips are one swipeable row: keep the picked one in view.
+    const picked = chips.children[state.selIndex];
+    if (picked && chips.scrollWidth > chips.clientWidth) {
+      const left = picked.offsetLeft - chips.offsetLeft, right = left + picked.offsetWidth;
+      if (left < chips.scrollLeft + 16) chips.scrollLeft = left - 16;
+      else if (right > chips.scrollLeft + chips.clientWidth - 16) chips.scrollLeft = right - chips.clientWidth + 16;
+    }
     markAvailability();
 
     const pat = currentPattern();

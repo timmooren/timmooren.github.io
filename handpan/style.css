@@ -136,6 +136,8 @@ main {
 
 @media (min-width: 980px) {
   main { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); align-items: start; }
+  .instrument { grid-column: 1; grid-row: 1; }
+  .panel { grid-column: 2; grid-row: 1; }
   .guide { grid-column: 1 / -1; }
 }
 
@@ -371,4 +373,30 @@ kbd {
   .fab.playing { background: var(--root); }
   .fab:active { transform: scale(0.96); }
   .site-footer { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+}
+
+/* ---------- compact practice card on phones ---------- */
+@media (max-width: 640px) {
+  .panel-step + .panel-step { margin-top: 12px; padding-top: 12px; }
+  .panel-step > .field-label { margin-bottom: 8px; }
+  /* One swipeable row of scales and chords instead of several lines. */
+  .chips {
+    flex-wrap: nowrap; overflow-x: auto;
+    margin: 0 -16px; padding: 0 16px 2px;
+    scrollbar-width: none;
+  }
+  .chips::-webkit-scrollbar { display: none; }
+  .chip { flex: none; white-space: nowrap; }
+  /* The pan already shows which notes are in the pick. */
+  #sel-desc { display: none; }
+  .desc { min-height: 0; margin-top: 10px; font-size: 14px; }
+  .steps { margin-top: 10px; gap: 5px; }
+  .step { min-height: 50px; padding: 4px 2px; }
+  .transport { margin-top: 12px; }
+  .secondary-btn { padding: 8px 14px; }
+}
+
+/* The floating button plays on phones, so the card doesn't need its own. */
+@media (max-width: 979px) {
+  .transport .play-btn { display: none; }
 }
