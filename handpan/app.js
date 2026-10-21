@@ -3,6 +3,7 @@
 
   const TUNINGS = window.HANDPAN_TUNINGS;
   const PATTERNS = window.HANDPAN_PATTERNS;
+  const GROOVES = window.HANDPAN_CHORD_GROOVES;
   const SVG_NS = 'http://www.w3.org/2000/svg';
   const CX = 170, CY = 165, RING = 114, SHELL = 158, DING_R = 44;
   const STORE = 'handpan.';
@@ -67,6 +68,7 @@
     if (!selections) {
       selections = [{
         name: def.name + ' scale',
+        scale: true,
         root: dingPc,
         pcs,
         desc: 'Every note on the instrument. Start and end on the ding to hear the key.',
@@ -93,7 +95,9 @@
       .map((p) => Object.assign({}, p, { parsed: parsePattern(p.steps, notes, topCount) }))
       .filter((p) => p.parsed);
 
-    return { def, notes, selections, patterns, dingPc };
+    const chords = selections.map((sel, i) => i).filter((i) => !selections[i].seq && !selections[i].scale);
+
+    return { def, notes, selections, patterns, chords, topCount, dingPc };
   }
 
   // Returns [{kind:'notes'|'tak'|'rest', notes:[note], label}] or null if the
@@ -251,7 +255,7 @@
     tuning: null,
     tab: load('tab', 'explore'),
     selIndex: 0,
-    patIndex: 0,
+    patKey: 'p0', // 'p<n>' = pattern n, 'g<n>' = chord groove n
     mirrored: load('mirrored', false),
     tempo: load('tempo', 88),
     loop: load('loop', true),
@@ -389,19 +393,52 @@
     [...$('sel-chips').children].forEach((b, i) => b.setAttribute('aria-pressed', String(i === state.selIndex)));
   }
 
+  // The chord a groove is built on: the chord picked in Scales & chords, or
+  // the first chord if a scale or motif is picked there.
+  function grooveChord() {
+    const T = state.tuning;
+    return T.chords.includes(state.selIndex) ? state.selIndex : T.chords[0];
+  }
+
+  function currentPattern() {
+    const T = state.tuning;
+    const n = Number(state.patKey.slice(1));
+    if (state.patKey[0] !== 'g' || !T.chords.length) return T.patterns[state.patKey[0] === 'p' ? n : 0];
+    const groove = GROOVES[n];
+    const chord = T.selections[grooveChord()];
+    const members = selectionMembers(chord);
+    const tone = (k) => members[(k - 1) % members.length].name;
+    const src = groove.steps.split(/\s+/).map((tok) => {
+      if (tok === 'C1..CN') return members.map((o) => o.name).join(' ');
+      const down = /^CN\.\.C(\d+)$/.exec(tok);
+      // Coming back down skips the top note, which the run up just played.
+      if (down) return members.slice(Number(down[1]) - 1, -1).reverse().map((o) => o.name).join(' ');
+      return tok.split('+').map((part) => (/^C\d+$/.test(part) ? tone(Number(part.slice(1))) : part)).join('+');
+    }).join(' ');
+    return Object.assign({}, groove, { chord, parsed: parsePattern(src, T.notes, T.topCount) });
+  }
+
   function paintPattern() {
     const T = state.tuning;
-    const pat = T.patterns[state.patIndex];
+    const pat = currentPattern();
     const used = new Set();
     pat.parsed.forEach((s) => (s.notes || []).forEach((o) => used.add(o)));
     T.notes.forEach((o) => {
-      o.g.classList.toggle('root', used.has(o) && !!o.isDing);
-      o.g.classList.toggle('sel', used.has(o) && !o.isDing);
+      const isRoot = used.has(o) && (pat.chord ? pc(o.midi) === pat.chord.root : !!o.isDing);
+      o.g.classList.toggle('root', isRoot);
+      o.g.classList.toggle('sel', used.has(o) && !isRoot);
       o.g.classList.toggle('dim', !used.has(o));
     });
     $('pat-level').textContent = pat.level;
     $('pat-level').dataset.level = pat.level.toLowerCase();
-    $('pat-desc').textContent = pat.desc;
+    $('chord-row').hidden = !pat.chord;
+    if (pat.chord) {
+      $('chord-select').value = String(grooveChord());
+      const names = [...new Set(selectionMembers(pat.chord).map((o) => o.name))].join(' · ');
+      $('pat-desc').textContent = pat.desc + ' Over ' + pat.chord.name + ': ' + names;
+    } else {
+      $('pat-desc').textContent = pat.desc;
+    }
     const list = $('pat-steps');
     list.textContent = '';
     pat.parsed.forEach((s, i) => {
@@ -432,7 +469,7 @@
       li.appendChild(btn);
       list.appendChild(li);
     });
-    $('pat-select').value = String(state.patIndex);
+    $('pat-select').value = state.patKey;
   }
 
   function paint() {
@@ -452,11 +489,26 @@
     });
     const patSelect = $('pat-select');
     patSelect.textContent = '';
-    T.patterns.forEach((pat, i) => {
+    const group = (label, items, prefix) => {
+      const og = document.createElement('optgroup');
+      og.label = label;
+      items.forEach((pat, i) => {
+        const opt = document.createElement('option');
+        opt.value = prefix + i;
+        opt.textContent = pat.name;
+        og.appendChild(opt);
+      });
+      patSelect.appendChild(og);
+    };
+    group('Patterns', T.patterns, 'p');
+    if (T.chords.length) group('Chord grooves', GROOVES, 'g');
+    const chordSelect = $('chord-select');
+    chordSelect.textContent = '';
+    T.chords.forEach((i) => {
       const opt = document.createElement('option');
       opt.value = String(i);
-      opt.textContent = pat.name;
-      patSelect.appendChild(opt);
+      opt.textContent = T.selections[i].name;
+      chordSelect.appendChild(opt);
     });
   }
 
@@ -524,7 +576,7 @@
   function playPattern(from) {
     if (state.playing) { const was = state.playing.kind; stopPlayback(); if (was === 'pat') return; }
     const ctx = ac();
-    const steps = state.tuning.patterns[state.patIndex].parsed;
+    const steps = currentPattern().parsed;
     const chips = [...$('pat-steps').querySelectorAll('.step')];
     const p = { kind: 'pat', timers: [], next: from || 0, time: ctx.currentTime + 0.08 };
     // Lookahead scheduler: queue audio slightly ahead so tempo stays steady.
@@ -565,7 +617,7 @@
     const def = TUNINGS.find((t) => t.id === id) || TUNINGS[0];
     state.tuning = buildTuning(def);
     state.selIndex = 0;
-    state.patIndex = 0;
+    state.patKey = 'p0';
     $('tuning-select').value = def.id;
     save('tuning', def.id);
     if (push && location.hash !== '#' + def.id) history.replaceState(null, '', '#' + def.id);
@@ -600,7 +652,8 @@
     $('tab-btn-patterns').addEventListener('click', () => setTab('patterns'));
     $('btn-play-sel').addEventListener('click', playSelection);
     $('btn-play-pat').addEventListener('click', () => playPattern());
-    $('pat-select').addEventListener('change', (e) => { stopPlayback(); state.patIndex = Number(e.target.value); paintPattern(); });
+    $('pat-select').addEventListener('change', (e) => { stopPlayback(); state.patKey = e.target.value; paintPattern(); });
+    $('chord-select').addEventListener('change', (e) => { stopPlayback(); state.selIndex = Number(e.target.value); paintPattern(); });
     $('btn-fab').addEventListener('click', playCurrent);
 
     const tempo = $('input-tempo');

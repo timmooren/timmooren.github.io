@@ -68,6 +68,43 @@ window.HANDPAN_PATTERNS = [
   },
 ];
 
+// Chord grooves are built from whichever chord is selected. C1, C2, C3…
+// are that chord's notes on the instrument from low to high (wrapping around
+// if the chord has fewer notes); C1..CN runs up through all of them and
+// CN..C2 runs back down to C2 without repeating the top note.
+window.HANDPAN_CHORD_GROOVES = [
+  {
+    name: 'Chord arpeggio',
+    level: 'Beginner',
+    steps: 'C1..CN CN..C2',
+    desc: 'Every note of the chord, up and back down. Let each one ring into the next.',
+  },
+  {
+    name: 'Ding to chord',
+    level: 'Beginner',
+    steps: 'D . C2 C3 D . C3 C4',
+    desc: 'The ding keeps the key while the chord floats above it.',
+  },
+  {
+    name: 'Broken chord',
+    level: 'Intermediate',
+    steps: 'C1 T C3 C2 T C4 C3 T',
+    desc: 'Chord tones out of order, with taks filling the gaps.',
+  },
+  {
+    name: 'Rising rain',
+    level: 'Intermediate',
+    steps: 'C1 C2 C3 . C2 C3 C4 . C3 C4 C5 . C4 C5 C6 T',
+    desc: 'Three-note cells that climb one chord tone at a time.',
+  },
+  {
+    name: 'Chord pulse',
+    level: 'Advanced',
+    steps: 'C1+C3 . C2 T C1+C4 . C3 T',
+    desc: 'Two chord tones struck together, answered by a single note and a tak.',
+  },
+];
+
 window.HANDPAN_TUNINGS = [
   {
     id: 'b-hijaz',
@@ -77,7 +114,7 @@ window.HANDPAN_TUNINGS = [
     bottom: [['Eb3', 90], ['G3', 45], ['Ab3', 135], ['D4', 180], ['G4', 0], ['B4', 225], ['Eb5', 315], ['E5', 270]],
     mood: 'Middle-Eastern and dramatic. The half step from C down to B is the signature sound. Bottom notes complete the scale and open up extra chords.',
     selections: [
-      { name: 'B Hijaz scale', root: 11, pcs: [11, 0, 3, 4, 6, 7, 9], desc: 'Complete with the bottom G. C to B is the signature.' },
+      { name: 'B Hijaz scale', scale: true, root: 11, pcs: [11, 0, 3, 4, 6, 7, 9], desc: 'Complete with the bottom G. C to B is the signature.' },
       { name: 'Hijaz motif', root: 11, seq: ['A4', 'F#4', 'E4', 'D#4', 'C4', 'B3', 'C4', 'B3', 'B2'], desc: 'Walk down from A4 and let C fall onto B.' },
       { name: 'B major', root: 11, pcs: [11, 3, 6], desc: 'B D# F#. Home chord; end phrases here.' },
       { name: 'B7', root: 11, pcs: [11, 3, 6, 9], desc: 'B D# F# A. Tension that wants E minor or back to B.' },

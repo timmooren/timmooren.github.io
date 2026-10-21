@@ -272,6 +272,9 @@ section {
 
 .pattern-title { display: flex; align-items: center; gap: 12px; }
 .pattern-title .select { flex: 1; min-width: 0; }
+.chord-row { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
+.chord-row .field-label { width: 48px; }
+.chord-row .select { flex: 1; min-width: 0; }
 .level { font-size: 12px; padding: 2px 10px; border-radius: 999px; background: var(--surface-2); color: var(--text-2); white-space: nowrap; }
 .level[data-level="beginner"] { color: var(--accent); background: var(--accent-soft); }
 .level[data-level="advanced"] { color: var(--root); background: var(--root-soft); }

@@ -8,6 +8,7 @@ A playable handpan in the browser. Plain HTML/CSS/JS, no build step.
 - Ten tunings, B Hijaz by default; pick one from the menu or link directly with `#d-kurd-9` etc.
 - Scales and chords highlighted on the instrument (chords are detected automatically for each tuning)
 - Guided playing patterns with step notation, R/L hand hints, tempo and loop
+- Chord grooves: patterns built from any chord on the current tuning, linked to the chord picked under Scales & chords
 - Synthesized sound (WebAudio): tuned partials, strike click, reverb, and a tak when you tap the shell
 - Keyboard: Space = ding, 1–9/0 = tone fields, T = tak, P = play/stop pattern
 
