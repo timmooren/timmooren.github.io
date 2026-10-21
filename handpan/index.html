@@ -57,47 +57,37 @@
     </section>
 
     <section class="panel" aria-label="Practice">
-      <div class="tabs" role="tablist">
-        <button role="tab" id="tab-btn-explore" aria-controls="tab-explore" aria-selected="true">Scales &amp; chords</button>
-        <button role="tab" id="tab-btn-patterns" aria-controls="tab-patterns" aria-selected="false">Playing patterns</button>
-      </div>
-
-      <div id="tab-explore" role="tabpanel" aria-labelledby="tab-btn-explore">
+      <div class="panel-step">
+        <h2 class="field-label">1 · Play over</h2>
         <div id="sel-chips" class="chips"></div>
         <p id="sel-desc" class="desc"></p>
-        <div class="transport">
-          <button id="btn-play-sel" class="primary-btn play-btn" aria-label="Play"></button>
+      </div>
+
+      <div class="panel-step">
+        <h2 class="field-label">2 · Level</h2>
+        <div id="level-seg" class="segmented" role="radiogroup" aria-label="Level">
+          <button role="radio" data-level="Beginner" aria-checked="true">Beginner</button>
+          <button role="radio" data-level="Intermediate" aria-checked="false">Intermediate</button>
+          <button role="radio" data-level="Advanced" aria-checked="false">Advanced</button>
         </div>
       </div>
 
-      <div id="tab-patterns" role="tabpanel" aria-labelledby="tab-btn-patterns" hidden>
-        <div class="pattern-detail">
-          <div id="level-seg" class="segmented" role="radiogroup" aria-label="Level">
-            <button role="radio" data-level="Beginner" aria-checked="true">Beginner</button>
-            <button role="radio" data-level="Intermediate" aria-checked="false">Intermediate</button>
-            <button role="radio" data-level="Advanced" aria-checked="false">Advanced</button>
-          </div>
-          <div class="pattern-title">
-            <select id="pat-select" class="select" aria-label="Playing pattern"></select>
-          </div>
-          <label id="chord-row" class="chord-row" hidden>
-            <span class="field-label">Chord</span>
-            <select id="chord-select" class="select"></select>
+      <div class="panel-step">
+        <h2 class="field-label">3 · Pattern</h2>
+        <select id="pat-select" class="select" aria-label="Playing pattern"></select>
+        <p id="pat-desc" class="desc"></p>
+        <ol id="pat-steps" class="steps" aria-label="Pattern steps"></ol>
+        <div class="transport">
+          <button id="btn-play-pat" class="primary-btn play-btn" aria-label="Play"></button>
+          <label class="tempo">
+            <span class="field-label">Tempo</span>
+            <input id="input-tempo" type="range" min="50" max="160" value="88">
+            <output id="out-tempo">88</output>
           </label>
-          <p id="pat-desc" class="desc"></p>
-          <ol id="pat-steps" class="steps" aria-label="Pattern steps"></ol>
-          <div class="transport">
-            <button id="btn-play-pat" class="primary-btn play-btn" aria-label="Play"></button>
-            <label class="tempo">
-              <span class="field-label">Tempo</span>
-              <input id="input-tempo" type="range" min="50" max="160" value="88">
-              <output id="out-tempo">88</output>
-            </label>
-            <label class="check">
-              <input id="input-loop" type="checkbox" checked>
-              <span>Loop</span>
-            </label>
-          </div>
+          <label class="check">
+            <input id="input-loop" type="checkbox" checked>
+            <span>Loop</span>
+          </label>
         </div>
       </div>
     </section>
@@ -107,7 +97,7 @@
       <div class="guide-grid">
         <article>
           <h3>Numbers</h3>
-          <p>The ding (center) is <b>D</b>. Tone fields on top are numbered <b>1, 2, 3…</b> from low to high. They zig-zag left and right around the ring, so walking up the scale means alternating hands.</p>
+          <p>The ding (center) is <b>D</b>. The numbers follow what you play over: on the scale, <b>1, 2, 3…</b> are the top tone fields from low to high; on a chord, they are that chord's notes. The instrument shows the same numbers.</p>
         </article>
         <article>
           <h3>Hands</h3>
@@ -119,7 +109,7 @@
         </article>
         <article>
           <h3>Keyboard</h3>
-          <p><kbd>Space</kbd> ding, <kbd>1</kbd>–<kbd>9</kbd> and <kbd>0</kbd> tone fields, <kbd>T</kbd> tak, <kbd>P</kbd> play/stop the current pattern.</p>
+          <p><kbd>Space</kbd> ding, <kbd>1</kbd>–<kbd>9</kbd> and <kbd>0</kbd> the numbered notes, <kbd>T</kbd> tak, <kbd>P</kbd> play/stop the current pattern.</p>
         </article>
       </div>
     </section>

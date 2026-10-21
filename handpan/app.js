@@ -3,7 +3,6 @@
 
   const TUNINGS = window.HANDPAN_TUNINGS;
   const PATTERNS = window.HANDPAN_PATTERNS;
-  const GROOVES = window.HANDPAN_CHORD_GROOVES;
   const SVG_NS = 'http://www.w3.org/2000/svg';
   const CX = 170, CY = 165, RING = 114, SHELL = 158, DING_R = 44;
   const STORE = 'handpan.';
@@ -90,25 +89,25 @@
       });
     }
 
-    const topCount = n;
-    const patterns = (def.patterns || []).concat(PATTERNS)
-      .map((p) => Object.assign({}, p, { parsed: parsePattern(p.steps, notes, topCount) }))
-      .filter((p) => p.parsed);
-
-    const chords = selections.map((sel, i) => i).filter((i) => !selections[i].seq && !selections[i].scale);
-
-    return { def, notes, selections, patterns, chords, topCount, dingPc };
+    return { def, notes, selections, dingPc };
   }
 
-  // Returns [{kind:'notes'|'tak'|'rest', notes:[note], label}] or null if the
-  // pattern needs more tone fields than this tuning has.
-  function parsePattern(src, notes, topCount) {
+  // Returns [{kind:'notes'|'tak'|'rest', notes:[note], hand}] or null if the
+  // pattern doesn't fit. Numbers pick from `degrees` (the numbered notes of
+  // what you play over); with `wrap`, numbers past the end wrap around.
+  function parsePattern(src, notes, degrees, wrap) {
+    const N = degrees.length;
+    if (!N) return null;
+    const num = (t) => (t === 'N' ? N : t.startsWith('N-') ? N - Number(t.slice(2)) : Number(t));
     const tokens = [];
-    src.trim().split(/\s+/).forEach((tok) => {
-      if (tok === '1..N') { for (let i = 1; i <= topCount; i++) tokens.push(String(i)); }
-      else if (tok === 'N..1') { for (let i = topCount; i >= 1; i--) tokens.push(String(i)); }
-      else tokens.push(tok);
-    });
+    for (const tok of src.trim().split(/\s+/)) {
+      const m = /^(\d+|N(?:-\d+)?)\.\.(\d+|N(?:-\d+)?)$/.exec(tok);
+      if (!m) { tokens.push(tok); continue; }
+      // Ranges starting at N run down (and are empty if there is no room).
+      const a = num(m[1]), b = num(m[2]);
+      if (m[1][0] === 'N') { for (let i = a; i >= b; i--) tokens.push(String(i)); }
+      else { for (let i = a; i <= b; i++) tokens.push(String(i)); }
+    }
     const steps = [];
     for (const tok of tokens) {
       if (tok === '.') { steps.push({ kind: 'rest' }); continue; }
@@ -119,8 +118,8 @@
         if (part === 'D') note = notes[0];
         else if (/^\d+$/.test(part)) {
           const idx = Number(part);
-          if (idx < 1 || idx > topCount) return null;
-          note = notes[idx];
+          if (idx < 1 || (idx > N && !wrap)) return null;
+          note = degrees[(idx - 1) % N];
         } else note = notes.find((o) => o.name === part);
         if (!note) return null;
         group.push(note);
@@ -280,11 +279,14 @@
     const body = ctx.createGain();
     body.gain.value = 0.3 * vel;
     tone.connect(body); body.connect(voice);
-    // Place the note left/right where its field sits on the pan.
+    // Place the note left/right where its field sits for the player. Bottom
+    // fields are stored as seen from below, so flip them to the player's view
+    // (the same as the Mirror view); the toggle only changes the drawing.
     const field = state.tuning && state.tuning.notes.find((o) => o.midi === midi);
     if (field && ctx.createStereoPanner) {
+      const x = field.side === 'bottom' ? 2 * CX - field.x : field.x;
       const pan = ctx.createStereoPanner();
-      pan.pan.value = ((field.x - CX) / SHELL) * 0.45;
+      pan.pan.value = ((x - CX) / SHELL) * 0.45;
       voice.connect(pan); out(pan);
     } else out(voice);
 
@@ -346,14 +348,15 @@
   // ---------- state ----------
   const state = {
     tuning: null,
-    tab: load('tab', 'explore'),
-    selIndex: 0,
-    patKey: 'p0', // 'p<n>' = pattern n, 'g<n>' = chord groove n
+    selIndex: 0, // what you play over: the scale or a chord
+    degrees: [], // its numbered notes, low to high
+    patterns: [], // patterns built on those notes
+    patName: null,
     level: load('level', 'Beginner'),
     mirrored: load('mirrored', false),
     tempo: load('tempo', 88),
     loop: load('loop', true),
-    playing: null, // { kind: 'sel'|'pat', timers: [], stop() }
+    playing: null, // { timers, interval, next, time }
   };
 
   // ---------- rendering ----------
@@ -406,7 +409,6 @@
       o.label = el('text', { 'text-anchor': 'middle', class: 'note-label', 'font-size': o.fs }, g);
       o.label.textContent = o.name;
       o.numLabel = el('text', { 'text-anchor': 'middle', class: 'note-num', 'font-size': 10 }, g);
-      o.numLabel.textContent = o.isDing ? 'ding' : o.num;
       o.g = g;
       const hit = (e) => { e.preventDefault(); stopPlayback(); strike(o.midi); flash(o); };
       g.addEventListener('pointerdown', (e) => { e.stopPropagation(); hit(e); });
@@ -420,7 +422,7 @@
       const x = o.side === 'bottom' && state.mirrored ? 2 * CX - o.x : o.x;
       ['circle', 'ring'].forEach((k) => { o[k].setAttribute('cx', x); o[k].setAttribute('cy', o.y); });
       o.label.setAttribute('x', x);
-      o.label.setAttribute('y', o.y + o.fs * 0.35 - (o.num ? 4 : 0));
+      o.label.setAttribute('y', o.y + o.fs * 0.35 - (o.dispNum ? 4 : 0));
       o.numLabel.setAttribute('x', x);
       o.numLabel.setAttribute('y', o.y + o.fs * 0.35 + 9);
     });
@@ -457,83 +459,89 @@
     $('svg-top').setAttribute('aria-label', 'Top of ' + T.def.name + ' handpan, ' + count + ' notes in total');
   }
 
-  // ----- selections (scales and chords) -----
+  // ----- what you play over, and the patterns built on it -----
   function selectionMembers(sel) {
-    const T = state.tuning;
-    if (sel.seq) return sel.seq.map((name) => T.notes.find((o) => o.name === name)).filter(Boolean);
-    return T.notes.filter((o) => sel.pcs.includes(pc(o.midi))).sort((a, b) => a.midi - b.midi);
+    return state.tuning.notes.filter((o) => sel.pcs.includes(pc(o.midi))).sort((a, b) => a.midi - b.midi);
   }
 
-  function paintSelection() {
+  // Numbered notes: the top tone fields for the scale; for a chord, its
+  // notes anywhere on the pan. The ding is always D.
+  function degreesFor(sel) {
+    const T = state.tuning;
+    if (sel.scale) return T.notes.filter((o) => o.side === 'top' && !o.isDing);
+    return selectionMembers(sel).filter((o) => !o.isDing);
+  }
+
+  function buildPatterns() {
+    const T = state.tuning;
+    const sel = T.selections[state.selIndex];
+    state.degrees = degreesFor(sel);
+    // A tuning's own patterns are written for its scale, so only show them there.
+    state.patterns = (T.def.patterns || []).filter((p) => sel.scale || !p.scaleOnly).concat(PATTERNS)
+      .map((p) => Object.assign({}, p, { parsed: parsePattern(p.steps, T.notes, state.degrees, !sel.scale) }))
+      .filter((p) => p.parsed);
+  }
+
+  function currentPattern() {
+    return state.patterns.find((p) => p.name === state.patName) || state.patterns[0];
+  }
+
+  // Pattern dropdown only lists patterns of the chosen level. The current
+  // pattern stays selected when it still fits.
+  function fillPatternSelect() {
+    const patSelect = $('pat-select');
+    patSelect.textContent = '';
+    const fits = state.patterns.filter((p) => p.level === state.level);
+    fits.forEach((p) => {
+      const opt = document.createElement('option');
+      opt.value = p.name;
+      opt.textContent = p.name;
+      patSelect.appendChild(opt);
+    });
+    if (!fits.some((p) => p.name === state.patName)) state.patName = fits.length ? fits[0].name : null;
+    patSelect.value = state.patName || '';
+    document.querySelectorAll('#level-seg button').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.level === state.level)));
+  }
+
+  function stepLabel(o) {
+    if (o.isDing) return 'D';
+    const i = state.degrees.indexOf(o);
+    return i >= 0 ? String(i + 1) : o.name;
+  }
+
+  function paint() {
     const T = state.tuning;
     const sel = T.selections[state.selIndex];
     const members = selectionMembers(sel);
+
+    // Instrument: colors and numbers follow what you play over.
     T.notes.forEach((o) => {
       const inSel = members.includes(o);
       const isRoot = inSel && pc(o.midi) === sel.root;
       o.g.classList.toggle('root', isRoot);
-      o.g.classList.toggle('sel', inSel && !isRoot);
-      o.g.classList.toggle('dim', !inSel);
+      o.g.classList.toggle('sel', (inSel || o.isDing) && !isRoot);
+      o.g.classList.toggle('dim', !inSel && !o.isDing);
+      const i = state.degrees.indexOf(o);
+      o.dispNum = o.isDing ? 'ding' : i >= 0 ? String(i + 1) : '';
+      o.numLabel.textContent = o.dispNum;
     });
-    const names = [];
-    members.forEach((o) => { if (!names.includes(o.name)) names.push(o.name); });
+    layout();
+
+    const names = [...new Set(members.map((o) => o.name))];
     $('sel-desc').textContent = '';
-    const p = document.createElement('span');
-    p.textContent = sel.desc + ' ';
+    const d = document.createElement('span');
+    d.textContent = sel.desc + ' ';
     const n = document.createElement('span');
     n.className = 'note-list';
     n.textContent = names.join(' · ');
-    $('sel-desc').append(p, n);
+    $('sel-desc').append(d, n);
     [...$('sel-chips').children].forEach((b, i) => b.setAttribute('aria-pressed', String(i === state.selIndex)));
-  }
 
-  // The chord a groove is built on: the chord picked in Scales & chords, or
-  // the first chord if a scale or motif is picked there.
-  function grooveChord() {
-    const T = state.tuning;
-    return T.chords.includes(state.selIndex) ? state.selIndex : T.chords[0];
-  }
-
-  function currentPattern() {
-    const T = state.tuning;
-    const n = Number(state.patKey.slice(1));
-    if (state.patKey[0] !== 'g' || !T.chords.length) return T.patterns[state.patKey[0] === 'p' ? n : 0];
-    const groove = GROOVES[n];
-    const chord = T.selections[grooveChord()];
-    const members = selectionMembers(chord);
-    const tone = (k) => members[(k - 1) % members.length].name;
-    const src = groove.steps.split(/\s+/).map((tok) => {
-      if (tok === 'C1..CN') return members.map((o) => o.name).join(' ');
-      const down = /^CN\.\.C(\d+)$/.exec(tok);
-      // Coming back down skips the top note, which the run up just played.
-      if (down) return members.slice(Number(down[1]) - 1, -1).reverse().map((o) => o.name).join(' ');
-      return tok.split('+').map((part) => (/^C\d+$/.test(part) ? tone(Number(part.slice(1))) : part)).join('+');
-    }).join(' ');
-    return Object.assign({}, groove, { chord, parsed: parsePattern(src, T.notes, T.topCount) });
-  }
-
-  function paintPattern() {
-    const T = state.tuning;
     const pat = currentPattern();
-    const used = new Set();
-    pat.parsed.forEach((s) => (s.notes || []).forEach((o) => used.add(o)));
-    T.notes.forEach((o) => {
-      const isRoot = used.has(o) && (pat.chord ? pc(o.midi) === pat.chord.root : !!o.isDing);
-      o.g.classList.toggle('root', isRoot);
-      o.g.classList.toggle('sel', used.has(o) && !isRoot);
-      o.g.classList.toggle('dim', !used.has(o));
-    });
-    $('chord-row').hidden = !pat.chord;
-    if (pat.chord) {
-      $('chord-select').value = String(grooveChord());
-      const names = [...new Set(selectionMembers(pat.chord).map((o) => o.name))].join(' · ');
-      $('pat-desc').textContent = pat.desc + ' Over ' + pat.chord.name + ': ' + names;
-    } else {
-      $('pat-desc').textContent = pat.desc;
-    }
+    $('pat-desc').textContent = pat ? pat.desc : '';
     const list = $('pat-steps');
     list.textContent = '';
-    pat.parsed.forEach((s, i) => {
+    (pat ? pat.parsed : []).forEach((s, i) => {
       const li = document.createElement('li');
       // Each step is a button: clicking it starts playback from that step.
       const btn = document.createElement('button');
@@ -546,13 +554,13 @@
       if (s.kind === 'rest') { main.textContent = '·'; sub.textContent = '\u00a0'; label = 'rest'; btn.append(main, sub); }
       else if (s.kind === 'tak') { main.textContent = 'T'; sub.textContent = s.hand; label = 'tak, ' + s.hand; btn.append(main, sub); }
       else {
-        main.textContent = s.notes.map((o) => o.num || o.name).join('+');
-        const names = s.notes.map((o) => o.name).join('+');
+        main.textContent = s.notes.map(stepLabel).join('+');
+        const noteNames = s.notes.map((o) => o.name).join('+');
         sub.textContent = s.hand;
-        label = names + ', ' + s.hand;
+        label = noteNames + ', ' + s.hand;
         const nm = document.createElement('span');
         nm.className = 'step-note';
-        nm.textContent = names;
+        nm.textContent = noteNames;
         btn.append(main, nm, sub);
       }
       btn.setAttribute('aria-label', 'Play from step ' + (i + 1) + ': ' + label);
@@ -561,11 +569,14 @@
       li.appendChild(btn);
       list.appendChild(li);
     });
-    $('pat-select').value = state.patKey;
   }
 
-  function paint() {
-    if (state.tab === 'explore') paintSelection(); else paintPattern();
+  // Picking what to play over rebuilds the patterns on its notes.
+  function refreshPatterns() {
+    stopPlayback();
+    buildPatterns();
+    fillPatternSelect();
+    paint();
   }
 
   function renderPanels() {
@@ -576,55 +587,9 @@
       const b = document.createElement('button');
       b.className = 'chip';
       b.textContent = sel.name;
-      b.addEventListener('click', () => { stopPlayback(); state.selIndex = i; paintSelection(); });
+      b.addEventListener('click', () => { state.selIndex = i; refreshPatterns(); });
       chips.appendChild(b);
     });
-    fillPatternSelect();
-    const chordSelect = $('chord-select');
-    chordSelect.textContent = '';
-    T.chords.forEach((i) => {
-      const opt = document.createElement('option');
-      opt.value = String(i);
-      opt.textContent = T.selections[i].name;
-      chordSelect.appendChild(opt);
-    });
-  }
-
-  // Pattern dropdown only lists patterns of the chosen level.
-  function fillPatternSelect() {
-    const T = state.tuning;
-    const patSelect = $('pat-select');
-    patSelect.textContent = '';
-    const keys = [];
-    const group = (label, items, prefix) => {
-      const og = document.createElement('optgroup');
-      og.label = label;
-      items.forEach((pat, i) => {
-        if (pat.level !== state.level) return;
-        const opt = document.createElement('option');
-        opt.value = prefix + i;
-        opt.textContent = pat.name;
-        og.appendChild(opt);
-        keys.push(opt.value);
-      });
-      if (og.children.length) patSelect.appendChild(og);
-    };
-    group('Patterns', T.patterns, 'p');
-    if (T.chords.length) group('Chord grooves', GROOVES, 'g');
-    if (!keys.includes(state.patKey)) state.patKey = keys[0];
-    document.querySelectorAll('#level-seg button').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.level === state.level)));
-  }
-
-  function setTab(tab) {
-    stopPlayback();
-    state.tab = tab;
-    save('tab', tab);
-    ['explore', 'patterns'].forEach((t) => {
-      $('tab-' + t).hidden = t !== tab;
-      $('tab-btn-' + t).setAttribute('aria-selected', String(t === tab));
-    });
-    paint();
-    updatePlayButtons();
   }
 
   // ---------- playback ----------
@@ -648,40 +613,19 @@
   }
 
   function updatePlayButtons() {
-    const p = state.playing;
-    setPlayButton($('btn-play-sel'), !!(p && p.kind === 'sel'));
-    setPlayButton($('btn-play-pat'), !!(p && p.kind === 'pat'));
-    // The floating button controls whichever tab is open.
-    setPlayButton($('btn-fab'), !!(p && p.kind === (state.tab === 'patterns' ? 'pat' : 'sel')));
-  }
-
-  function playCurrent() {
-    if (state.tab === 'patterns') playPattern(); else playSelection();
-  }
-
-  function playSelection() {
-    if (state.playing) { const was = state.playing.kind; stopPlayback(); if (was === 'sel') return; }
-    const ctx = ac();
-    const members = selectionMembers(state.tuning.selections[state.selIndex]);
-    const gap = 0.36;
-    const start = ctx.currentTime + 0.05;
-    const timers = [];
-    members.forEach((o, i) => {
-      const t = start + i * gap;
-      strike(o.midi, t, 0.9);
-      timers.push(at(t, () => flash(o)));
-    });
-    timers.push(at(start + members.length * gap + 0.4, () => { state.playing = null; updatePlayButtons(); }));
-    state.playing = { kind: 'sel', timers };
-    updatePlayButtons();
+    const playing = !!state.playing;
+    setPlayButton($('btn-play-pat'), playing);
+    setPlayButton($('btn-fab'), playing);
   }
 
   function playPattern(from) {
-    if (state.playing) { const was = state.playing.kind; stopPlayback(); if (was === 'pat') return; }
+    if (state.playing) { stopPlayback(); if (from === undefined) return; }
+    const pat = currentPattern();
+    if (!pat) return;
     const ctx = ac();
-    const steps = currentPattern().parsed;
+    const steps = pat.parsed;
     const chips = [...$('pat-steps').querySelectorAll('.step')];
-    const p = { kind: 'pat', timers: [], next: from || 0, time: ctx.currentTime + 0.08 };
+    const p = { timers: [], next: from || 0, time: ctx.currentTime + 0.08 };
     // Lookahead scheduler: queue audio slightly ahead so tempo stays steady.
     const tick = () => {
       const stepDur = 60 / state.tempo / 2;
@@ -720,14 +664,13 @@
     const def = TUNINGS.find((t) => t.id === id) || TUNINGS[0];
     state.tuning = buildTuning(def);
     state.selIndex = 0;
-    state.patKey = 'p0';
     $('tuning-select').value = def.id;
     save('tuning', def.id);
     if (push && location.hash !== '#' + def.id) history.replaceState(null, '', '#' + def.id);
     renderHeader();
     renderInstrument();
     renderPanels();
-    paint();
+    refreshPatterns();
   }
 
   // ---------- controls ----------
@@ -751,20 +694,16 @@
     select.addEventListener('change', () => setTuning(select.value, true));
 
     $('btn-mirror').addEventListener('click', () => { state.mirrored = !state.mirrored; save('mirrored', state.mirrored); layout(); });
-    $('tab-btn-explore').addEventListener('click', () => setTab('explore'));
-    $('tab-btn-patterns').addEventListener('click', () => setTab('patterns'));
-    $('btn-play-sel').addEventListener('click', playSelection);
     $('btn-play-pat').addEventListener('click', () => playPattern());
     document.querySelectorAll('#level-seg button').forEach((b) => b.addEventListener('click', () => {
       stopPlayback();
       state.level = b.dataset.level;
       save('level', state.level);
       fillPatternSelect();
-      if (state.tab === 'patterns') paintPattern();
+      paint();
     }));
-    $('pat-select').addEventListener('change', (e) => { stopPlayback(); state.patKey = e.target.value; paintPattern(); });
-    $('chord-select').addEventListener('change', (e) => { stopPlayback(); state.selIndex = Number(e.target.value); paintPattern(); });
-    $('btn-fab').addEventListener('click', playCurrent);
+    $('pat-select').addEventListener('change', (e) => { stopPlayback(); state.patName = e.target.value; paint(); });
+    $('btn-fab').addEventListener('click', () => playPattern());
 
     const tempo = $('input-tempo');
     tempo.value = state.tempo;
@@ -787,10 +726,10 @@
       const T = state.tuning;
       let note = null;
       if (e.key === ' ' && tag !== 'BUTTON' && !e.target.closest('.field')) note = T.notes[0];
-      else if (/^[0-9]$/.test(e.key)) note = T.notes.find((o) => o.num === String(e.key === '0' ? 10 : Number(e.key)));
+      else if (/^[0-9]$/.test(e.key)) note = T.notes.find((o) => o.dispNum === String(e.key === '0' ? 10 : Number(e.key)));
       if (note) { e.preventDefault(); if (e.repeat) return; stopPlayback(); strike(note.midi); flash(note); return; }
       if (e.key === 't' || e.key === 'T') { if (!e.repeat) { stopPlayback(); tak(); } return; }
-      if (e.key === 'p' || e.key === 'P') { if (state.tab !== 'patterns') setTab('patterns'); playPattern(); }
+      if (e.key === 'p' || e.key === 'P') playPattern();
     });
 
     window.addEventListener('hashchange', () => setTuning(location.hash.slice(1), false));
@@ -798,7 +737,7 @@
     const fromHash = location.hash.slice(1);
     const initial = TUNINGS.some((t) => t.id === fromHash) ? fromHash : load('tuning', TUNINGS[0].id);
     setTuning(initial, false);
-    setTab(state.tab === 'patterns' ? 'patterns' : 'explore');
+    updatePlayButtons();
   }
 
   init();

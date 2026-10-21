@@ -5,11 +5,13 @@
 // with an angle (degrees, 0 = right, 90 = toward the player).
 //
 // Pattern steps are space-separated tokens, one eighth note each:
-//   D      ding            1..10  top tone field by pitch order
-//   T      tak (shell)     .      rest
-//   A4     any note by name (also reaches bottom notes)
+//   D      ding            .      rest            T   tak (shell)
+//   1..10  the notes of whatever you play over, low to high: on the scale
+//          that is the top tone fields; on a chord, that chord's notes
+//          (wrapping around if the chord has fewer)
 //   D+5    notes struck together
-//   1..N   run up all top fields   N..1  run down
+//   1..N   run up all of them   N..1  run down   N-1..2  down, skipping the top
+//   A4     a fixed note by name (only in a tuning's own scale patterns)
 
 window.HANDPAN_PATTERNS = [
   {
@@ -66,42 +68,29 @@ window.HANDPAN_PATTERNS = [
     steps: 'D+5 . 3 T 1+6 . 4 T D+7 . 5 T 2+6 . D .',
     desc: 'Two hands at once: one plays a low note or the ding, the other the melody above it. Strike both at exactly the same time.',
   },
-];
-
-// Chord grooves are built from whichever chord is selected. C1, C2, C3…
-// are that chord's notes on the instrument from low to high (wrapping around
-// if the chord has fewer notes); C1..CN runs up through all of them and
-// CN..C2 runs back down to C2 without repeating the top note.
-window.HANDPAN_CHORD_GROOVES = [
   {
-    name: 'Chord arpeggio',
+    name: 'Up and back',
     level: 'Beginner',
-    steps: 'C1..CN CN..C2',
-    desc: 'Every note of the chord, up and back down. Let each one ring into the next.',
+    steps: '1..N N-1..2',
+    desc: 'Every note, up and back down. On a chord this is an arpeggio; let each note ring into the next.',
   },
   {
-    name: 'Ding to chord',
-    level: 'Beginner',
-    steps: 'D . C2 C3 D . C3 C4',
-    desc: 'The ding keeps the key while the chord floats above it.',
-  },
-  {
-    name: 'Broken chord',
+    name: 'Broken steps',
     level: 'Intermediate',
-    steps: 'C1 T C3 C2 T C4 C3 T',
-    desc: 'Chord tones out of order, with taks filling the gaps.',
+    steps: '1 T 3 2 T 4 3 T',
+    desc: 'Notes out of order, with taks filling the gaps.',
   },
   {
     name: 'Rising rain',
     level: 'Intermediate',
-    steps: 'C1 C2 C3 . C2 C3 C4 . C3 C4 C5 . C4 C5 C6 T',
-    desc: 'Three-note cells that climb one chord tone at a time.',
+    steps: '1 2 3 . 2 3 4 . 3 4 5 . 4 5 6 T',
+    desc: 'Three-note cells that climb one note at a time.',
   },
   {
-    name: 'Chord pulse',
+    name: 'Double stops',
     level: 'Advanced',
-    steps: 'C1+C3 . C2 T C1+C4 . C3 T',
-    desc: 'Two chord tones struck together, answered by a single note and a tak.',
+    steps: '1+3 . 2 T 1+4 . 3 T',
+    desc: 'Two notes struck together, answered by a single note and a tak.',
   },
 ];
 
@@ -115,7 +104,6 @@ window.HANDPAN_TUNINGS = [
     mood: 'Middle-Eastern and dramatic. The half step from C down to B is the signature sound. Bottom notes complete the scale and open up extra chords.',
     selections: [
       { name: 'B Hijaz scale', scale: true, root: 11, pcs: [11, 0, 3, 4, 6, 7, 9], desc: 'Complete with the bottom G. C to B is the signature.' },
-      { name: 'Hijaz motif', root: 11, seq: ['A4', 'F#4', 'E4', 'D#4', 'C4', 'B3', 'C4', 'B3', 'B2'], desc: 'Walk down from A4 and let C fall onto B.' },
       { name: 'B major', root: 11, pcs: [11, 3, 6], desc: 'B D# F#. Home chord; end phrases here.' },
       { name: 'B7', root: 11, pcs: [11, 3, 6, 9], desc: 'B D# F# A. Tension that wants E minor or back to B.' },
       { name: 'E minor', root: 4, pcs: [4, 7, 11], desc: 'E G B. Restful; uses the bottom G notes.' },
@@ -126,18 +114,21 @@ window.HANDPAN_TUNINGS = [
     patterns: [
       {
         name: 'Hijaz motif',
+        scaleOnly: true,
         level: 'Beginner',
         steps: 'A4 F#4 E4 D#4 C4 B3 C4 B3 D . . .',
         desc: 'The essential Hijaz phrase: walk down from A4 and lean on the C before it falls onto B.',
       },
       {
         name: 'Snake charmer',
+        scaleOnly: true,
         level: 'Intermediate',
         steps: 'D 3 4 3 5 4 3 . 3 4 6 5 4 3 4 .',
         desc: 'Circle around B and C, reach up to D# and E, and always come back to B.',
       },
       {
         name: 'Bottom bloom',
+        scaleOnly: true,
         level: 'Advanced',
         steps: 'D G3 3 G4 6 B4 . T D Eb3 5 Ab3 6 E5 . T',
         desc: 'Alternate top fields with bottom notes to play E minor, then a bright E major. Reach under with one hand.',

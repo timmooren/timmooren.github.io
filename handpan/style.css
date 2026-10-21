@@ -227,20 +227,8 @@ section {
 .dot-shell { background: var(--shell); border: 1px solid var(--shell-hi); }
 
 /* ---------- panel ---------- */
-.tabs {
-  display: grid; grid-template-columns: 1fr 1fr;
-  padding: 4px; gap: 4px;
-  background: var(--surface-2);
-  border-radius: 11px;
-  margin-bottom: 16px;
-}
-.tabs button {
-  padding: 9px 10px;
-  border: 0; border-radius: 8px;
-  background: transparent;
-  font-weight: 500; color: var(--text-2);
-}
-.tabs button[aria-selected="true"] { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2); }
+.panel-step + .panel-step { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
+.panel-step > .field-label { display: block; margin: 0 0 10px; }
 
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip {
@@ -272,12 +260,9 @@ section {
 .check { display: flex; align-items: center; gap: 6px; color: var(--text-2); }
 .check input { accent-color: var(--accent); width: 16px; height: 16px; }
 
-.pattern-title { display: flex; align-items: center; gap: 12px; }
-.pattern-title .select { flex: 1; min-width: 0; }
-.chord-row { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
-.chord-row .field-label { width: 48px; }
-.chord-row .select { flex: 1; min-width: 0; }
-.segmented { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 10px; }
+.panel .select { width: 100%; min-width: 0; }
+
+.segmented { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .segmented button {
   padding: 7px 6px;
   border: 1px solid var(--border); border-radius: 999px;
