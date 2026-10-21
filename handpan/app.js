@@ -122,10 +122,15 @@
         else if (/^\d+$/.test(part)) {
           const idx = Number(part);
           if (idx < 1 || (idx > N && !wrap)) return null;
-          note = degrees[(idx - 1) % N];
+          // Wrapping can land on a note already in this strike (1+4 on a
+          // three-note chord is 1+1); move on to the next unused one.
+          for (let k = 0; k < N; k++) {
+            note = degrees[(idx - 1 + k) % N];
+            if (!group.includes(note)) break;
+          }
         } else note = notes.find((o) => o.name === part);
         if (!note) return null;
-        group.push(note);
+        if (!group.includes(note)) group.push(note);
       }
       steps.push({ kind: 'notes', notes: group });
     }
