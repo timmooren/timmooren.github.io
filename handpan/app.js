@@ -229,20 +229,29 @@
     src.start(t0); src.stop(t0 + decay * 1.5);
   }
 
-  // Other tone fields ring along quietly when they share partials with the
-  // struck note: octaves most, fifths and twelfths a little.
+  // Other tone fields ring along quietly where they share a partial with the
+  // struck note (its fundamental, octave or twelfth). They resonate at that
+  // shared frequency only, so they add shimmer to pitches already sounding
+  // rather than a new pitch: a D3 field answers a struck D4 at D4, not D3.
   function sympathetic(ctx, midi, t0, vel) {
     if (!state.tuning) return;
+    const f = hz(midi);
+    const struck = [1, 2, 3].map((k) => f * k);
     const picked = [];
     state.tuning.notes.forEach((o) => {
-      const iv = Math.abs(o.midi - midi);
-      if (iv === 0) return;
-      const amp = iv % 12 === 0 ? 0.05 : iv === 7 || iv === 19 ? 0.025 : 0;
-      if (amp) picked.push([o.midi, amp / (1 + Math.floor(iv / 12) * 0.5)]);
+      if (o.midi === midi) return;
+      const g = hz(o.midi);
+      let shared = 0;
+      [1, 2, 3].forEach((k) => {
+        if (!shared && struck.some((p) => Math.abs(g * k / p - 1) < 0.004)) shared = g * k;
+      });
+      // Resonance at the struck fundamental is strongest, higher ones weaker.
+      if (shared) picked.push([shared, shared < f * 1.5 ? 0.012 : 0.007]);
     });
-    // Capped at three, single partial each, to stay light on phones.
-    picked.sort((a, b) => b[1] - a[1]).slice(0, 3).forEach(([m, amp]) => {
-      partial(ctx, audio.symp, hz(m), amp * vel, t0 + 0.01, ringTime(m) * 0.7, 0.12);
+    // Capped at three, single partial each, to stay light on phones. They
+    // never outlast the struck note.
+    picked.sort((a, b) => b[1] - a[1]).slice(0, 3).forEach(([freq, amp]) => {
+      partial(ctx, audio.symp, freq, amp * vel, t0 + 0.01, ringTime(midi) * 0.6, 0.15);
     });
   }
 
