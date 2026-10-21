@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#121317">
+  <meta name="description" content="A playable handpan in your browser: pitch-sized tone fields, multiple tunings, scales, chords and guided playing patterns.">
+  <title>Handpan</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2246%22 fill=%22%237a7f8a%22/><circle cx=%2250%22 cy=%2250%22 r=%2214%22 fill=%22%23D85A30%22/></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="brand">
+      <h1>Handpan</h1>
+      <p>Tap the tone fields, explore the scale, follow a pattern.</p>
+    </div>
+    <div class="header-controls">
+      <label class="tuning-picker">
+        <span class="field-label">Tuning</span>
+        <select id="tuning-select" aria-label="Handpan tuning"></select>
+      </label>
+      <div class="sound-controls">
+        <button id="btn-mute" class="icon-btn" aria-label="Mute sound" aria-pressed="false"></button>
+        <input id="input-volume" type="range" min="0" max="100" value="80" aria-label="Volume">
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="instrument" aria-labelledby="tuning-name">
+      <div class="tuning-head">
+        <h2 id="tuning-name"></h2>
+        <p id="tuning-notes" class="tuning-notes"></p>
+        <p id="tuning-mood" class="tuning-mood"></p>
+      </div>
+
+      <div class="pans" id="pans">
+        <figure class="pan">
+          <figcaption><span>Top</span></figcaption>
+          <svg id="svg-top" viewBox="0 0 340 330" role="img" aria-label="Top of handpan"></svg>
+        </figure>
+        <figure class="pan" id="fig-bottom">
+          <figcaption>
+            <span id="bottom-view">Bottom, seen from below</span>
+            <button id="btn-mirror" class="small-btn" aria-pressed="false">Mirror</button>
+          </figcaption>
+          <svg id="svg-bottom" viewBox="0 0 340 330" role="img" aria-label="Bottom of handpan"></svg>
+        </figure>
+      </div>
+
+      <div class="legend">
+        <span><i class="dot dot-root"></i>Root / home</span>
+        <span><i class="dot dot-sel"></i>In selection</span>
+        <span><i class="dot dot-shell"></i>Tap the shell for a tak</span>
+      </div>
+    </section>
+
+    <section class="panel" aria-label="Practice">
+      <div class="tabs" role="tablist">
+        <button role="tab" id="tab-btn-explore" aria-controls="tab-explore" aria-selected="true">Scales &amp; chords</button>
+        <button role="tab" id="tab-btn-patterns" aria-controls="tab-patterns" aria-selected="false">Playing patterns</button>
+      </div>
+
+      <div id="tab-explore" role="tabpanel" aria-labelledby="tab-btn-explore">
+        <div id="sel-chips" class="chips"></div>
+        <p id="sel-desc" class="desc"></p>
+        <div class="transport">
+          <button id="btn-play-sel" class="primary-btn">Play</button>
+        </div>
+      </div>
+
+      <div id="tab-patterns" role="tabpanel" aria-labelledby="tab-btn-patterns" hidden>
+        <div id="pat-list" class="pattern-list"></div>
+        <div class="pattern-detail">
+          <div class="pattern-title">
+            <h3 id="pat-name"></h3>
+            <span id="pat-level" class="level"></span>
+          </div>
+          <p id="pat-desc" class="desc"></p>
+          <ol id="pat-steps" class="steps" aria-label="Pattern steps"></ol>
+          <div class="transport">
+            <button id="btn-play-pat" class="primary-btn">Play</button>
+            <label class="tempo">
+              <span class="field-label">Tempo</span>
+              <input id="input-tempo" type="range" min="50" max="160" value="88">
+              <output id="out-tempo">88</output>
+            </label>
+            <label class="check">
+              <input id="input-loop" type="checkbox" checked>
+              <span>Loop</span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="guide" aria-labelledby="guide-title">
+      <h2 id="guide-title">How to read the patterns</h2>
+      <div class="guide-grid">
+        <article>
+          <h3>Numbers</h3>
+          <p>The ding (center) is <b>D</b>. Tone fields on top are numbered <b>1, 2, 3…</b> from low to high. They zig-zag left and right around the ring, so walking up the scale means alternating hands.</p>
+        </article>
+        <article>
+          <h3>Hands</h3>
+          <p>Each step shows <b>R</b> or <b>L</b>. Alternate hands by default. Strike with the pad of a finger and bounce straight off; letting it rest kills the note.</p>
+        </article>
+        <article>
+          <h3>Tak &amp; rests</h3>
+          <p><b>T</b> is a tak: a light tap on the shell between notes for a percussive click. A dot is a rest. Count the steps as eighth notes.</p>
+        </article>
+        <article>
+          <h3>Keyboard</h3>
+          <p><kbd>Space</kbd> ding, <kbd>1</kbd>–<kbd>9</kbd> and <kbd>0</kbd> tone fields, <kbd>T</kbd> tak, <kbd>P</kbd> play/stop the current pattern.</p>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>Sounds are synthesized in the browser. Tunings show common layouts; real instruments vary by maker.</p>
+  </footer>
+
+  <script src="tunings.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
