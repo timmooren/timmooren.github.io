@@ -617,10 +617,13 @@
   }
 
   // Picking what to play over rebuilds the patterns on its notes.
+  // If a pattern is playing and the new pick has it too, it keeps playing on
+  // the new notes; otherwise playback stops.
   function refreshPatterns() {
-    stopPlayback();
+    const playingName = state.playing && state.patName;
     buildPatterns();
     fillPatternSelect();
+    if (playingName && state.patName !== playingName) stopPlayback();
     paint();
   }
 
@@ -668,13 +671,16 @@
     const pat = currentPattern();
     if (!pat) return;
     const ctx = ac();
-    const steps = pat.parsed;
-    const chips = [...$('pat-steps').querySelectorAll('.step')];
     const p = { timers: [], next: from || 0, time: ctx.currentTime + 0.08 };
     // Lookahead scheduler: queue audio slightly ahead so tempo stays steady.
+    // Steps are read fresh every time, so switching scale, chord or tuning
+    // mid-pattern carries on with the new notes.
     const tick = () => {
       const stepDur = 60 / state.tempo / 2;
       while (p.time < ctx.currentTime + 0.15) {
+        const current = currentPattern();
+        if (!current) { stopPlayback(); return; }
+        const steps = current.parsed;
         if (p.next >= steps.length) {
           if (!state.loop) {
             p.timers.push(at(p.time + 0.3, () => stopPlayback()));
@@ -689,7 +695,7 @@
         if (s.kind === 'tak') tak(t, { hand: s.hand });
         if (s.kind === 'notes') s.notes.forEach((o) => strike(o.midi, t, s.notes.length > 1 ? 0.8 : 1));
         p.timers.push(at(t, () => {
-          chips.forEach((c, j) => c.classList.toggle('now', j === i));
+          $('pat-steps').querySelectorAll('.step').forEach((c, j) => c.classList.toggle('now', j === i));
           if (s.notes) s.notes.forEach(flash);
         }));
         if (p.timers.length > 64) p.timers.splice(0, 32);
@@ -705,7 +711,6 @@
 
   // ---------- tunings ----------
   function setTuning(id, push) {
-    stopPlayback();
     const def = TUNINGS.find((t) => t.id === id) || TUNINGS[0];
     state.tuning = buildTuning(def);
     state.selIndex = 0;
