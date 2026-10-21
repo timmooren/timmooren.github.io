@@ -66,7 +66,7 @@
         <div id="sel-chips" class="chips"></div>
         <p id="sel-desc" class="desc"></p>
         <div class="transport">
-          <button id="btn-play-sel" class="primary-btn">Play</button>
+          <button id="btn-play-sel" class="primary-btn play-btn" aria-label="Play"></button>
         </div>
       </div>
 
@@ -80,7 +80,7 @@
           <p id="pat-desc" class="desc"></p>
           <ol id="pat-steps" class="steps" aria-label="Pattern steps"></ol>
           <div class="transport">
-            <button id="btn-play-pat" class="primary-btn">Play</button>
+            <button id="btn-play-pat" class="primary-btn play-btn" aria-label="Play"></button>
             <label class="tempo">
               <span class="field-label">Tempo</span>
               <input id="input-tempo" type="range" min="50" max="160" value="88">
@@ -126,6 +126,8 @@
     </div>
     <p>Sounds are synthesized in the browser. Tunings show common layouts; real instruments vary by maker.</p>
   </footer>
+
+  <button id="btn-fab" class="fab" aria-label="Play"></button>
 
   <script src="tunings.js"></script>
   <script src="app.js"></script>

@@ -256,12 +256,13 @@ section {
 .transport { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-top: 16px; }
 
 .primary-btn {
-  min-width: 96px;
-  padding: 10px 20px;
-  border: 0; border-radius: 10px;
+  display: grid; place-items: center;
+  width: 52px; height: 52px;
+  padding: 0;
+  border: 0; border-radius: 50%;
   background: var(--accent); color: #fff;
-  font-weight: 600;
 }
+.play-btn svg, .fab svg { width: 24px; height: 24px; fill: currentColor; }
 .primary-btn.playing { background: var(--root); }
 
 .tempo { display: flex; align-items: center; gap: 8px; }
@@ -324,4 +325,25 @@ kbd {
 
 @media (prefers-reduced-motion: reduce) {
   .field.hit circle:first-child, .ripple { animation: none; }
+}
+
+/* ---------- floating play button (phones / single column) ---------- */
+.fab { display: none; }
+
+@media (max-width: 979px) {
+  .fab {
+    position: fixed;
+    right: calc(16px + env(safe-area-inset-right));
+    bottom: calc(16px + env(safe-area-inset-bottom));
+    z-index: 10;
+    display: grid; place-items: center;
+    width: 60px; height: 60px;
+    padding: 0;
+    border: 0; border-radius: 50%;
+    background: var(--accent); color: #fff;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.3);
+  }
+  .fab.playing { background: var(--root); }
+  .fab:active { transform: scale(0.96); }
+  .site-footer { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 }

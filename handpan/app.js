@@ -472,6 +472,7 @@
       $('tab-btn-' + t).setAttribute('aria-selected', String(t === tab));
     });
     paint();
+    updatePlayButtons();
   }
 
   // ---------- playback ----------
@@ -484,12 +485,26 @@
     updatePlayButtons();
   }
 
+  const ICON_PLAY = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z"/></svg>';
+  const ICON_STOP = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6.5" y="6.5" width="11" height="11" rx="1.5"/></svg>';
+
+  function setPlayButton(btn, playing) {
+    btn.classList.toggle('playing', playing);
+    btn.setAttribute('aria-label', playing ? 'Stop' : 'Play');
+    btn.title = playing ? 'Stop' : 'Play';
+    btn.innerHTML = playing ? ICON_STOP : ICON_PLAY;
+  }
+
   function updatePlayButtons() {
     const p = state.playing;
-    $('btn-play-sel').textContent = p && p.kind === 'sel' ? 'Stop' : 'Play';
-    $('btn-play-pat').textContent = p && p.kind === 'pat' ? 'Stop' : 'Play';
-    $('btn-play-sel').classList.toggle('playing', !!(p && p.kind === 'sel'));
-    $('btn-play-pat').classList.toggle('playing', !!(p && p.kind === 'pat'));
+    setPlayButton($('btn-play-sel'), !!(p && p.kind === 'sel'));
+    setPlayButton($('btn-play-pat'), !!(p && p.kind === 'pat'));
+    // The floating button controls whichever tab is open.
+    setPlayButton($('btn-fab'), !!(p && p.kind === (state.tab === 'patterns' ? 'pat' : 'sel')));
+  }
+
+  function playCurrent() {
+    if (state.tab === 'patterns') playPattern(); else playSelection();
   }
 
   function playSelection() {
@@ -588,6 +603,7 @@
     $('tab-btn-patterns').addEventListener('click', () => setTab('patterns'));
     $('btn-play-sel').addEventListener('click', playSelection);
     $('btn-play-pat').addEventListener('click', playPattern);
+    $('btn-fab').addEventListener('click', playCurrent);
 
     const tempo = $('input-tempo');
     tempo.value = state.tempo;
