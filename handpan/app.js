@@ -314,28 +314,59 @@
     audio.voices.set(midi, { gain: voice, end: t0 + t60 });
   }
 
-  // A tak: a fingertip on the shell between fields. A short click, a woody
-  // body knock, and the ding answering faintly through the cavity.
-  function tak(when) {
+  // A tak: a fingertip on the shell between fields. A sharp contact click,
+  // a short metallic ring from the shell's own (untuned) modes, a small pop
+  // from the air cavity, and the nearest fields humming faintly. Every tak is
+  // slightly different so repeated ones don't sound machine-made.
+  // `where` is {x, y, side} in pan coordinates, or {hand: 'R'|'L'}.
+  function tak(when, where) {
     const ctx = ac();
     const t0 = Math.max(when || 0, ctx.currentTime);
-    const vel = 0.9 + Math.random() * 0.15;
+    const T = state.tuning;
+    const jit = () => 0.94 + Math.random() * 0.12;
+    const vel = 0.85 + Math.random() * 0.25;
+    where = where || {};
+
+    // Where on the pan: the tapped spot, else a spot near the rim on the
+    // side of the hand that plays it.
+    let x = where.x, y = where.y;
+    if (x === undefined) {
+      const side = where.hand === 'L' ? -1 : 1;
+      const a = (90 - side * (35 + Math.random() * 40)) * Math.PI / 180;
+      x = CX + SHELL * 0.85 * Math.cos(a);
+      y = CY + SHELL * 0.85 * Math.sin(a);
+    }
+    const playerX = where.side === 'bottom' ? 2 * CX - x : x;
+
     const g = ctx.createGain();
-    g.gain.value = vel;
-    out(g);
-    noiseBurst(ctx, g, t0, 'highpass', 2200, 0.7, 0.32, 0.03);
-    noiseBurst(ctx, g, t0, 'bandpass', 780, 3.5, 0.55, 0.06);
-    const o = ctx.createOscillator();
-    const og = ctx.createGain();
-    o.frequency.setValueAtTime(260, t0);
-    o.frequency.exponentialRampToValueAtTime(150, t0 + 0.06);
-    og.gain.setValueAtTime(0.1, t0);
-    og.gain.setTargetAtTime(0, t0, 0.02);
-    o.connect(og); og.connect(g);
-    o.start(t0); o.stop(t0 + 0.15);
-    if (state.tuning) {
-      const ding = hz(state.tuning.notes[0].midi);
-      partial(ctx, g, ding, 0.018, t0, 1.6, 0.01);
+    g.gain.value = vel * 1.5;
+    if (ctx.createStereoPanner) {
+      const pan = ctx.createStereoPanner();
+      pan.pan.value = Math.max(-0.6, Math.min(0.6, ((playerX - CX) / SHELL) * 0.55));
+      g.connect(pan); out(pan);
+    } else out(g);
+
+    // Contact click and the fingertip's soft thud.
+    noiseBurst(ctx, g, t0, 'highpass', 3500 * jit(), 0.7, 0.3, 0.006);
+    noiseBurst(ctx, g, t0, 'bandpass', 1100 * jit(), 1.6, 0.22, 0.025);
+    noiseBurst(ctx, g, t0, 'lowpass', 300, 0.7, 0.18, 0.03);
+
+    // Shell modes: inharmonic, bright, gone within a fifth of a second.
+    const base = 1250 * jit();
+    [[1, 0.05, 0.2], [1.57, 0.042, 0.15], [2.31, 0.032, 0.11], [3.17, 0.022, 0.08], [4.43, 0.014, 0.05]].forEach(([r, amp, t60]) => {
+      partial(ctx, g, base * r * jit(), amp, t0, t60 * jit(), 0.0015);
+    });
+
+    if (T) {
+      // Cavity pop near the ding's pitch.
+      partial(ctx, g, hz(T.notes[0].midi) * 1.02, 0.05, t0, 0.18, 0.004);
+      // The two nearest fields hum faintly.
+      T.notes
+        .filter((o) => o.side === (where.side || 'top'))
+        .map((o) => ({ o, d: Math.hypot(o.x - x, o.y - y) }))
+        .sort((a, b) => a.d - b.d)
+        .slice(0, 2)
+        .forEach(({ o }, i) => partial(ctx, g, hz(o.midi), (i ? 0.006 : 0.012), t0 + 0.002, ringTime(o.midi) * 0.25, 0.01));
     }
   }
 
@@ -375,7 +406,14 @@
     el('stop', { offset: '70%', 'stop-color': 'var(--shell)' }, grad);
     el('stop', { offset: '100%', 'stop-color': 'var(--shell-lo)' }, grad);
     const shell = el('circle', { cx: CX, cy: CY, r: SHELL, fill: 'url(#shell-' + side + ')', class: 'shell' }, svg);
-    shell.addEventListener('pointerdown', (e) => { e.preventDefault(); stopPlayback(); tak(); ripple(svg, e); });
+    shell.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      stopPlayback();
+      const p = ripple(svg, e);
+      // Undo the mirror so the position is in the field coordinates.
+      const x = side === 'bottom' && state.mirrored ? 2 * CX - p.x : p.x;
+      tak(0, { x, y: p.y, side });
+    });
     if (side === 'bottom') {
       el('circle', { cx: CX, cy: CY, r: 38, class: 'port' }, svg);
       const t = el('text', { x: CX, y: CY + 4, class: 'port-label', 'text-anchor': 'middle' }, svg);
@@ -390,6 +428,7 @@
     const p = pt.matrixTransform(svg.getScreenCTM().inverse());
     const r = el('circle', { cx: p.x, cy: p.y, r: 6, class: 'ripple' }, svg);
     setTimeout(() => r.remove(), 500);
+    return p;
   }
 
   function renderInstrument() {
@@ -641,7 +680,7 @@
         const i = p.next;
         const s = steps[i];
         const t = p.time;
-        if (s.kind === 'tak') tak(t);
+        if (s.kind === 'tak') tak(t, { hand: s.hand });
         if (s.kind === 'notes') s.notes.forEach((o) => strike(o.midi, t, s.notes.length > 1 ? 0.8 : 1));
         p.timers.push(at(t, () => {
           chips.forEach((c, j) => c.classList.toggle('now', j === i));

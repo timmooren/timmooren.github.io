@@ -9,7 +9,7 @@ A playable handpan in the browser. Plain HTML/CSS/JS, no build step.
 - Scales and chords highlighted on the instrument (chords are detected automatically for each tuning)
 - Guided playing patterns with step notation, R/L hand hints, tempo and loop
 - Chord grooves: patterns built from any chord on the current tuning, linked to the chord picked under Scales & chords
-- Synthesized sound (WebAudio): tuned partial pairs that shimmer, a bright-to-mellow strike, sympathetic resonance between fields, the ding's cavity boom, stereo placement, a warm room reverb, and a tak when you tap the shell
+- Synthesized sound (WebAudio): tuned partial pairs that shimmer, a bright-to-mellow strike, sympathetic resonance between fields, the ding's cavity boom, stereo placement, a warm room reverb, and a tak (click, shell ring, cavity pop, nearby fields humming) placed where you tap the shell
 - Keyboard: Space = ding, 1–9/0 = tone fields, T = tak, P = play/stop pattern
 
 ## Adding a tuning or pattern
