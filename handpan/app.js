@@ -509,26 +509,59 @@
   }
 
   // ----- what you play over, and the patterns built on it -----
-  function selectionMembers(sel) {
-    return state.tuning.notes.filter((o) => sel.pcs.includes(pc(o.midi))).sort((a, b) => a.midi - b.midi);
+  function selectionMembers(sel, T = state.tuning) {
+    return T.notes.filter((o) => sel.pcs.includes(pc(o.midi))).sort((a, b) => a.midi - b.midi);
   }
 
   // Numbered notes: the top tone fields for the scale; for a chord, its
   // notes anywhere on the pan. The ding is always D.
-  function degreesFor(sel) {
-    const T = state.tuning;
+  function degreesFor(sel, T = state.tuning) {
     if (sel.scale) return T.notes.filter((o) => o.side === 'top' && !o.isDing);
-    return selectionMembers(sel).filter((o) => !o.isDing);
+    return selectionMembers(sel, T).filter((o) => !o.isDing);
+  }
+
+  // The patterns that fit a tuning when playing over one of its selections.
+  // A tuning's own patterns (`own`) are written for its scale, so they only
+  // appear there; the generic ones adapt to anything.
+  function patternsFor(T, selIndex) {
+    const sel = T.selections[selIndex];
+    const degrees = degreesFor(sel, T);
+    const own = (T.def.patterns || []).filter((p) => sel.scale || !p.scaleOnly).map((p) => Object.assign({ own: true }, p));
+    const patterns = own.concat(PATTERNS)
+      .map((p) => Object.assign({}, p, { parsed: parsePattern(p.steps, T.notes, degrees, !sel.scale) }))
+      .filter((p) => p.parsed);
+    return { degrees, patterns };
   }
 
   function buildPatterns() {
-    const T = state.tuning;
-    const sel = T.selections[state.selIndex];
-    state.degrees = degreesFor(sel);
-    // A tuning's own patterns are written for its scale, so only show them there.
-    state.patterns = (T.def.patterns || []).filter((p) => sel.scale || !p.scaleOnly).concat(PATTERNS)
-      .map((p) => Object.assign({}, p, { parsed: parsePattern(p.steps, T.notes, state.degrees, !sel.scale) }))
-      .filter((p) => p.parsed);
+    const { degrees, patterns } = patternsFor(state.tuning, state.selIndex);
+    state.degrees = degrees;
+    state.patterns = patterns;
+  }
+
+  // Other tunings, built once, to check which patterns they have.
+  const builtTunings = {};
+  function tuningFor(id) {
+    if (state.tuning.def.id === id) return state.tuning;
+    if (!builtTunings[id]) builtTunings[id] = buildTuning(TUNINGS.find((t) => t.id === id));
+    return builtTunings[id];
+  }
+
+  // While a pattern plays, grey out the scales, chords and tunings that don't
+  // have it: switching to one of those stops playback.
+  function markAvailability() {
+    const name = state.playing && state.patName;
+    const has = (T, i) => patternsFor(T, i).patterns.some((p) => p.name === name);
+    [...$('sel-chips').children].forEach((b, i) => {
+      const off = !!name && !has(state.tuning, i);
+      b.classList.toggle('unavailable', off);
+      b.title = off ? name + ' is not available here; switching stops it' : '';
+    });
+    [...$('tuning-select').options].forEach((opt) => {
+      const off = !!name && !has(tuningFor(opt.value), 0);
+      opt.textContent = opt.dataset.label + (off ? ' · no ' + name : '');
+      opt.classList.toggle('unavailable', off);
+    });
   }
 
   function currentPattern() {
@@ -547,11 +580,24 @@
     const patSelect = $('pat-select');
     patSelect.textContent = '';
     const fits = state.patterns.filter((p) => p.level === level);
-    fits.forEach((p) => {
-      const opt = document.createElement('option');
-      opt.value = p.name;
-      opt.textContent = p.name;
-      patSelect.appendChild(opt);
+    const available = new Set(fits.map((p) => p.name));
+    const T = state.tuning;
+    // Patterns written for this tuning first, then the ones that work anywhere.
+    // Ones that don't fit the current pick are listed greyed out, with why.
+    const ownAll = (T.def.patterns || []).filter((p) => p.level === level);
+    const genericAll = PATTERNS.filter((p) => p.level === level);
+    [[T.def.name + ' only', ownAll, T.def.name + ' scale only'], ['All tunings', genericAll, 'needs more notes']].forEach(([label, list, why]) => {
+      if (!list.length) return;
+      const og = document.createElement('optgroup');
+      og.label = label;
+      list.forEach((p) => {
+        const opt = document.createElement('option');
+        opt.value = p.name;
+        opt.disabled = !available.has(p.name);
+        opt.textContent = p.name + (opt.disabled ? ' (' + why + ')' : '');
+        og.appendChild(opt);
+      });
+      patSelect.appendChild(og);
     });
     if (!fits.some((p) => p.name === state.patName)) state.patName = fits.length ? fits[0].name : null;
     patSelect.value = state.patName || '';
@@ -591,6 +637,7 @@
     n.textContent = names.join(' · ');
     $('sel-desc').append(d, n);
     [...$('sel-chips').children].forEach((b, i) => b.setAttribute('aria-pressed', String(i === state.selIndex)));
+    markAvailability();
 
     const pat = currentPattern();
     $('pat-desc').textContent = pat ? pat.desc : '';
@@ -674,6 +721,27 @@
     const playing = !!state.playing;
     setPlayButton($('btn-play-pat'), playing);
     setPlayButton($('btn-fab'), playing);
+    markAvailability();
+  }
+
+  // Pick a random scale or chord, and a random pattern on it, on this tuning.
+  function randomize() {
+    const T = state.tuning;
+    const wasPlaying = !!state.playing;
+    stopPlayback();
+    const before = state.selIndex + '/' + state.patName;
+    for (let tries = 0; tries < 8; tries++) {
+      state.selIndex = Math.floor(Math.random() * T.selections.length);
+      buildPatterns();
+      const pick = state.patterns[Math.floor(Math.random() * state.patterns.length)];
+      state.patName = pick.name;
+      state.level = pick.level;
+      if (state.selIndex + '/' + state.patName !== before) break;
+    }
+    save('level', state.level);
+    fillPatternSelect();
+    paint();
+    if (wasPlaying) playPattern();
   }
 
   function playPattern(from) {
@@ -748,7 +816,8 @@
     TUNINGS.forEach((t) => {
       const opt = document.createElement('option');
       opt.value = t.id;
-      opt.textContent = t.name + ' (' + (1 + t.top.length + (t.bottom ? t.bottom.length : 0)) + ')';
+      opt.dataset.label = t.name + ' (' + (1 + t.top.length + (t.bottom ? t.bottom.length : 0)) + ')';
+      opt.textContent = opt.dataset.label;
       select.appendChild(opt);
     });
     select.addEventListener('change', () => setTuning(select.value, true));
@@ -771,6 +840,7 @@
     }));
     $('pat-select').addEventListener('change', (e) => { stopPlayback(); state.patName = e.target.value; paint(); });
     $('btn-fab').addEventListener('click', () => playPattern());
+    $('btn-random').addEventListener('click', randomize);
 
     const tempo = $('input-tempo');
     tempo.value = state.tempo;

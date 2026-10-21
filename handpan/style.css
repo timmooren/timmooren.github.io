@@ -261,6 +261,7 @@ section {
   font-size: 14px;
 }
 .chip[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent-text); color: var(--accent-text); font-weight: 500; }
+.chip.unavailable, .chip.unavailable[aria-pressed="true"] { opacity: 0.4; border-style: dashed; }
 
 .desc { color: var(--text-2); min-height: 3em; margin: 14px 0 0; }
 .note-list { display: block; margin-top: 4px; color: var(--text); font-weight: 500; font-variant-numeric: tabular-nums; }
@@ -276,6 +277,17 @@ section {
 }
 .play-btn svg, .fab svg { width: 24px; height: 24px; fill: currentColor; }
 .primary-btn.playing { background: var(--root); }
+.secondary-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; padding: 10px 16px;
+  border: 1px solid var(--border); border-radius: 10px;
+  background: transparent;
+  font-weight: 500;
+}
+.secondary-btn:hover { border-color: var(--accent-text); color: var(--accent-text); }
+.secondary-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.6; }
+.secondary-btn svg circle { fill: currentColor; stroke: none; }
+option.unavailable, option:disabled { color: var(--text-3); }
 
 .tempo { display: flex; align-items: center; gap: 8px; }
 .tempo output { min-width: 3ch; font-variant-numeric: tabular-nums; color: var(--text-2); }
