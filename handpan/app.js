@@ -140,7 +140,7 @@
 
   // ---------- audio ----------
   const audio = {
-    ctx: null, master: null, wet: null, noise: null,
+    ctx: null, master: null, wet: null, noise: null, symp: null, voices: null,
     volume: load('volume', 80), muted: load('muted', false),
   };
 
@@ -149,31 +149,48 @@
       const AC = window.AudioContext || window.webkitAudioContext;
       const ctx = new AC();
       const comp = ctx.createDynamicsCompressor();
-      comp.threshold.value = -14; comp.knee.value = 12; comp.ratio.value = 4;
+      comp.threshold.value = -16; comp.knee.value = 14; comp.ratio.value = 3.5;
+      comp.attack.value = 0.004; comp.release.value = 0.25;
       comp.connect(ctx.destination);
       const master = ctx.createGain();
       master.connect(comp);
       const verb = ctx.createConvolver();
-      verb.buffer = impulse(ctx, 2.8, 2.6);
+      verb.buffer = impulse(ctx, 3.2);
       const wet = ctx.createGain();
-      wet.gain.value = 0.32;
+      wet.gain.value = 0.3;
       wet.connect(verb); verb.connect(master);
-      const noise = ctx.createBuffer(1, ctx.sampleRate * 0.25, ctx.sampleRate);
+      const noise = ctx.createBuffer(1, ctx.sampleRate * 0.5, ctx.sampleRate);
       const d = noise.getChannelData(0);
       for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-      Object.assign(audio, { ctx, master, wet, noise });
+      const symp = ctx.createGain();
+      symp.connect(master); symp.connect(wet);
+      Object.assign(audio, { ctx, master, wet, noise, symp, voices: new Map() });
       applyVolume();
     }
     if (audio.ctx.state === 'suspended') audio.ctx.resume();
     return audio.ctx;
   }
 
-  function impulse(ctx, seconds, decay) {
-    const len = Math.floor(ctx.sampleRate * seconds);
-    const buf = ctx.createBuffer(2, len, ctx.sampleRate);
+  // A warm room: a few early reflections, then a diffuse tail that loses its
+  // highs as it decays (a one-pole lowpass whose cutoff falls over time).
+  function impulse(ctx, seconds) {
+    const sr = ctx.sampleRate;
+    const len = Math.floor(sr * seconds);
+    const pre = Math.floor(sr * 0.012);
+    const buf = ctx.createBuffer(2, len, sr);
     for (let c = 0; c < 2; c++) {
       const d = buf.getChannelData(c);
-      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay);
+      let lp = 0;
+      for (let i = pre; i < len; i++) {
+        const t = (i - pre) / sr;
+        const k = 0.55 * Math.exp(-t * 2.2) + 0.04;
+        lp += k * ((Math.random() * 2 - 1) - lp);
+        d[i] = lp * Math.exp(-t * 2.4);
+      }
+      [0.017, 0.023, 0.031, 0.043, 0.057].forEach((s, j) => {
+        const at = Math.floor(sr * (s + c * 0.0021));
+        if (at < len) d[at] += (j % 2 ? -1 : 1) * 0.5 * Math.pow(0.7, j);
+      });
     }
     return buf;
   }
@@ -186,62 +203,138 @@
 
   function out(node) { node.connect(audio.master); node.connect(audio.wet); }
 
-  // A handpan note: fundamental, octave and compound fifth (the three partials
-  // makers tune), slightly detuned pairs for shimmer, plus a soft strike click.
+  // One decaying sine partial. `glide` starts the pitch slightly sharp: the
+  // steel is stiffer for a moment right after the strike.
+  function partial(ctx, dest, freq, amp, t0, t60, attack, glide) {
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.frequency.setValueAtTime(freq * (1 + (glide || 0)), t0);
+    if (glide) o.frequency.setTargetAtTime(freq, t0, 0.025);
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(amp, t0 + attack);
+    g.gain.setTargetAtTime(0, t0 + attack, t60 / 6.9);
+    o.connect(g); g.connect(dest);
+    o.start(t0); o.stop(t0 + attack + t60);
+  }
+
+  function noiseBurst(ctx, dest, t0, type, freq, q, amp, decay) {
+    const src = ctx.createBufferSource();
+    src.buffer = audio.noise;
+    src.playbackRate.value = 0.9 + Math.random() * 0.2;
+    const f = ctx.createBiquadFilter();
+    f.type = type; f.frequency.value = freq; f.Q.value = q;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(amp, t0);
+    g.gain.setTargetAtTime(0, t0, decay / 4);
+    src.connect(f); f.connect(g); g.connect(dest);
+    src.start(t0); src.stop(t0 + decay * 1.5);
+  }
+
+  // Other tone fields ring along quietly when they share partials with the
+  // struck note: octaves most, fifths and twelfths a little.
+  function sympathetic(ctx, midi, t0, vel) {
+    if (!state.tuning) return;
+    const picked = [];
+    state.tuning.notes.forEach((o) => {
+      const iv = Math.abs(o.midi - midi);
+      if (iv === 0) return;
+      const amp = iv % 12 === 0 ? 0.05 : iv === 7 || iv === 19 ? 0.025 : 0;
+      if (amp) picked.push([o.midi, amp / (1 + Math.floor(iv / 12) * 0.5)]);
+    });
+    // Capped at three, single partial each, to stay light on phones.
+    picked.sort((a, b) => b[1] - a[1]).slice(0, 3).forEach(([m, amp]) => {
+      partial(ctx, audio.symp, hz(m), amp * vel, t0 + 0.01, ringTime(m) * 0.7, 0.12);
+    });
+  }
+
+  // Low notes sustain far longer than high ones.
+  function ringTime(midi) { return Math.min(9, Math.max(2.6, 9 - (midi - 47) * 0.22)); }
+
+  // A handpan note. Each tone field is tuned so its fundamental, octave and
+  // compound fifth line up; each partial is a near-degenerate pair that beats
+  // slowly (the shimmer). A lowpass that closes after the strike makes it go
+  // from bright to mellow, and harder hits are brighter.
   function strike(midi, when, velocity) {
     const ctx = ac();
     const t0 = Math.max(when || 0, ctx.currentTime);
-    const vel = velocity || 1;
+    const vel = (velocity || 1) * (0.92 + Math.random() * 0.12);
     const f = hz(midi);
-    const ring = Math.min(5.5, Math.max(2.2, 2.2 + (76 - midi) * 0.11));
+    const t60 = ringTime(midi);
+    const isDing = state.tuning && state.tuning.notes[0].midi === midi;
+
+    // Restriking a ringing field partly damps what was there.
+    const prev = audio.voices.get(midi);
+    if (prev && prev.end > t0) {
+      prev.gain.gain.cancelScheduledValues(t0);
+      prev.gain.gain.setTargetAtTime(0.25, t0, 0.015);
+    }
+
+    const voice = ctx.createGain();
+    voice.gain.value = 1;
+    const tone = ctx.createBiquadFilter();
+    tone.type = 'lowpass';
+    tone.Q.value = 0.4;
+    const open = Math.min(16000, f * (6 + 10 * vel));
+    tone.frequency.setValueAtTime(open, t0);
+    tone.frequency.setTargetAtTime(Math.max(f * 3.2, 900), t0 + 0.005, 0.12);
     const body = ctx.createGain();
-    body.gain.value = 0.32 * vel;
-    out(body);
-    [[1, 1, ring], [2, 0.38, ring * 0.6], [3, 0.14, ring * 0.38], [4.02, 0.04, ring * 0.2]].forEach(([mult, amp, dur]) => {
-      [-1, 1].forEach((side) => {
-        const o = ctx.createOscillator();
-        const g = ctx.createGain();
-        o.type = 'sine';
-        o.frequency.value = f * mult * (1 + side * 0.0009);
-        g.gain.setValueAtTime(0.0001, t0);
-        g.gain.exponentialRampToValueAtTime(amp * 0.5, t0 + 0.006 + 0.004 * mult);
-        g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-        o.connect(g); g.connect(body);
-        o.start(t0); o.stop(t0 + dur + 0.05);
-      });
-    });
-    const click = ctx.createBufferSource();
-    click.buffer = audio.noise;
-    const bp = ctx.createBiquadFilter();
-    bp.type = 'bandpass'; bp.frequency.value = Math.min(9000, f * 6); bp.Q.value = 2;
-    const cg = ctx.createGain();
-    cg.gain.setValueAtTime(0.12 * vel, t0);
-    cg.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.03);
-    click.connect(bp); bp.connect(cg); out(cg);
-    click.start(t0); click.stop(t0 + 0.05);
+    body.gain.value = 0.3 * vel;
+    tone.connect(body); body.connect(voice);
+    // Place the note left/right where its field sits on the pan.
+    const field = state.tuning && state.tuning.notes.find((o) => o.midi === midi);
+    if (field && ctx.createStereoPanner) {
+      const pan = ctx.createStereoPanner();
+      pan.pan.value = ((field.x - CX) / SHELL) * 0.45;
+      voice.connect(pan); out(pan);
+    } else out(voice);
+
+    const beat = 0.0006 + Math.random() * 0.0005;
+    partial(ctx, tone, f, 0.62, t0, t60, 0.004, 0.0035);
+    partial(ctx, tone, f * (1 + beat), 0.38, t0, t60 * 0.92, 0.004, 0.0035);
+    partial(ctx, tone, f * 2.0008, 0.32 * vel, t0, t60 * 0.6, 0.003, 0.003);
+    partial(ctx, tone, f * 2.0008 * (1 + beat * 1.6), 0.18 * vel, t0, t60 * 0.55, 0.003, 0.003);
+    partial(ctx, tone, f * 2.9985, 0.16 * vel, t0, t60 * 0.38, 0.003, 0.002);
+    // Untuned shell modes: quiet, short, and what makes it sound like steel.
+    partial(ctx, tone, f * 3.93, 0.035 * vel, t0, 0.5, 0.002);
+    partial(ctx, tone, f * 5.41, 0.022 * vel, t0, 0.28, 0.002);
+
+    // The finger: a soft thud plus a brief bright contact noise.
+    noiseBurst(ctx, voice, t0, 'lowpass', 380, 0.7, 0.16 * vel, 0.035);
+    noiseBurst(ctx, voice, t0, 'bandpass', Math.min(9000, f * 7), 1.2, 0.05 * vel, 0.018);
+
+    if (isDing) {
+      // The cavity under the ding (Helmholtz resonance) adds a breathy boom.
+      noiseBurst(ctx, voice, t0, 'bandpass', f, 9, 0.5 * vel, 0.35);
+      partial(ctx, voice, f * 0.995, 0.08 * vel, t0, 0.9, 0.02);
+    }
+
+    sympathetic(ctx, midi, t0, vel);
+    audio.voices.set(midi, { gain: voice, end: t0 + t60 });
   }
 
-  // A tak: a short, bright tap on the shell with a hint of body resonance.
+  // A tak: a fingertip on the shell between fields. A short click, a woody
+  // body knock, and the ding answering faintly through the cavity.
   function tak(when) {
     const ctx = ac();
     const t0 = Math.max(when || 0, ctx.currentTime);
-    const src = ctx.createBufferSource();
-    src.buffer = audio.noise;
-    const bp = ctx.createBiquadFilter();
-    bp.type = 'bandpass'; bp.frequency.value = 3200; bp.Q.value = 0.9;
+    const vel = 0.9 + Math.random() * 0.15;
     const g = ctx.createGain();
-    g.gain.setValueAtTime(0.5, t0);
-    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.07);
-    src.connect(bp); bp.connect(g); out(g);
-    src.start(t0); src.stop(t0 + 0.1);
+    g.gain.value = vel;
+    out(g);
+    noiseBurst(ctx, g, t0, 'highpass', 2200, 0.7, 0.32, 0.03);
+    noiseBurst(ctx, g, t0, 'bandpass', 780, 3.5, 0.55, 0.06);
     const o = ctx.createOscillator();
     const og = ctx.createGain();
-    o.frequency.setValueAtTime(320, t0);
-    o.frequency.exponentialRampToValueAtTime(140, t0 + 0.08);
-    og.gain.setValueAtTime(0.12, t0);
-    og.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.12);
-    o.connect(og); out(og);
+    o.frequency.setValueAtTime(260, t0);
+    o.frequency.exponentialRampToValueAtTime(150, t0 + 0.06);
+    og.gain.setValueAtTime(0.1, t0);
+    og.gain.setTargetAtTime(0, t0, 0.02);
+    o.connect(og); og.connect(g);
     o.start(t0); o.stop(t0 + 0.15);
+    if (state.tuning) {
+      const ding = hz(state.tuning.notes[0].midi);
+      partial(ctx, g, ding, 0.018, t0, 1.6, 0.01);
+    }
   }
 
   // Run fn when the audio clock reaches `when`, so visuals line up with sound.
