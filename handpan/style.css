@@ -130,7 +130,6 @@ main {
 @media (min-width: 980px) {
   main { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); align-items: start; }
   .guide { grid-column: 1 / -1; }
-  .panel { position: sticky; top: 16px; }
 }
 
 section {
