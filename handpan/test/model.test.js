@@ -159,3 +159,43 @@ test('B Hijaz own patterns play the same notes as before pitch-order numbering',
   assert.equal(get('Snake charmer'), 'B2 B3 C4 B3 D#4 C4 B3 . B3 C4 E4 D#4 C4 B3 C4 .');
   assert.equal(get('Waterfall'), 'E5 Eb5 B4 A4 G4 F#4 E4 D#4 C4 B3 B2 . . .');
 });
+
+// ---- playback position ----
+
+// Like the player: advance first, then read the (possibly swapped) steps.
+const advance = (play, latest, loop) => { const i = M.nextStep(play, latest, loop); return play.steps[i]; };
+
+test('nextStep: plays through and loops back to beat 1', () => {
+  const steps = ['a', 'b', 'c'];
+  const play = { steps, next: 0 };
+  const order = [];
+  for (let k = 0; k < 7; k++) order.push(advance(play, steps, true));
+  assert.deepEqual(order, ['a', 'b', 'c', 'a', 'b', 'c', 'a']);
+});
+
+test('nextStep: stops at the end without loop', () => {
+  const steps = ['a', 'b'];
+  const play = { steps, next: 0 };
+  assert.equal(M.nextStep(play, steps, false), 0);
+  assert.equal(M.nextStep(play, steps, false), 1);
+  assert.equal(M.nextStep(play, steps, false), -1);
+});
+
+test('nextStep: a switch mid-run waits for beat 1', () => {
+  const old = ['o1', 'o2', 'o3', 'o4'];
+  const fresh = ['n1', 'n2'];
+  const play = { steps: old, next: 0 };
+  const order = [];
+  order.push(advance(play, old, true));
+  for (let k = 0; k < 6; k++) order.push(advance(play, fresh, true));
+  assert.deepEqual(order, ['o1', 'o2', 'o3', 'o4', 'n1', 'n2', 'n1']);
+});
+
+test('nextStep: starting from a step plays that run before picking up a switch', () => {
+  const old = ['o1', 'o2', 'o3'];
+  const fresh = ['n1', 'n2', 'n3'];
+  const play = { steps: old, next: 1 };
+  const order = [];
+  for (let k = 0; k < 3; k++) order.push(advance(play, fresh, true));
+  assert.deepEqual(order, ['o2', 'o3', 'n1']);
+});

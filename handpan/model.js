@@ -151,10 +151,23 @@
     return { degrees, patterns };
   }
 
+  // Playback position: `play` is { steps, next }. Returns the index in
+  // play.steps to sound now, or -1 when a pattern without loop has ended.
+  // `latest` (the pattern's steps on the current scale, chord or tuning) is
+  // only picked up on beat 1, so a switch lets the running sequence finish.
+  function nextStep(play, latest, loop) {
+    if (play.next >= play.steps.length) {
+      if (!loop) return -1;
+      play.next = 0;
+    }
+    if (play.next === 0) play.steps = latest;
+    return play.next++;
+  }
+
   const api = {
     CX, CY, RING, SHELL, DING_R, CHORD_TYPES,
     toMidi, pc, pitchClass, fieldRadius, buildTuning, parsePattern,
-    selectionMembers, degreesFor, patternsFor,
+    selectionMembers, degreesFor, patternsFor, nextStep,
   };
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.HandpanModel = api;
