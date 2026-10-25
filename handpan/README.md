@@ -21,3 +21,13 @@ Edit `tunings.js`. Each tuning lists its ding, its top notes from low to high (t
 ```sh
 python3 -m http.server
 ```
+
+## Tests
+
+The music and pattern logic lives in `model.js` (no DOM or audio), so it can be tested in plain Node:
+
+```sh
+npm test
+```
+
+This uses Node's built-in test runner and needs no dependencies. Besides the logic itself, the tests check `tunings.js`: valid notes, top notes in order, and every tuning's own patterns fitting its scale. Run them after adding a tuning or pattern. They also run on every push, before the site deploys.

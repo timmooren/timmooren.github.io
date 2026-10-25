@@ -1,0 +1,11 @@
+{
+  "name": "handpan",
+  "private": true,
+  "description": "Handpan practice tool; tests for its music and pattern logic",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test"
+  }
+}
