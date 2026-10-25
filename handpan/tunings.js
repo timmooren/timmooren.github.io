@@ -220,6 +220,20 @@ window.HANDPAN_TUNINGS = [
         steps: '5 6 7 . Eb5 E5 B4 . 3 4 5 . G3 Eb3 D .',
         desc: 'The top plays a phrase, the bottom answers it. Turn the pan slightly so you can reach underneath.',
       },
+      {
+        name: 'Whole scale up',
+        scaleOnly: true,
+        level: 'Double',
+        steps: 'D Eb3 1 G3 2 3 4 5 6 7 G4 8 B4 Eb5 E5 .',
+        desc: 'Every note of the scale from low to high, top and bottom together. Your hands keep switching between the top ring and the underside.',
+      },
+      {
+        name: 'Whole scale down',
+        scaleOnly: true,
+        level: 'Double',
+        steps: 'E5 Eb5 B4 8 G4 7 6 5 4 3 2 G3 1 Eb3 D .',
+        desc: 'The same path from the top note back down to the ding. D4 and Ab3 are left out: they sit underneath for chords, not for the scale.',
+      },
     ],
   },
   {
