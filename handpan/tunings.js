@@ -27,7 +27,7 @@ window.HANDPAN_PATTERNS = [
     desc: 'Return to the ding every four steps. It anchors your ear in the key while the melody wanders.',
   },
   {
-    name: 'Full ascent',
+    name: 'Top ascent',
     level: 'Beginner',
     steps: 'D 1..N . . .',
     desc: 'Climb the zig-zag from the ding to the top note. Notice how each step flips sides: that is the layout doing the work.',
@@ -57,7 +57,7 @@ window.HANDPAN_PATTERNS = [
     desc: 'A phrase falls, then answers by rising. Ending each half on a rest gives it room to breathe.',
   },
   {
-    name: 'Cascade',
+    name: 'Top cascade',
     level: 'Beginner',
     steps: 'N..1 D . . .',
     desc: 'Pour down from the top to the ding. Try it slowly with a crescendo into the final ding.',
