@@ -530,10 +530,9 @@
     return T.notes.filter((o) => sel.pcs.includes(pc(o.midi))).sort((a, b) => a.midi - b.midi);
   }
 
-  // Numbered notes: the top tone fields for the scale; for a chord, its
-  // notes anywhere on the pan. The ding is always D.
+  // Numbered notes: the scale's or chord's notes anywhere on the pan, low to
+  // high. The ding is always D.
   function degreesFor(sel, T = state.tuning) {
-    if (sel.scale) return T.notes.filter((o) => o.side === 'top' && !o.isDing);
     return selectionMembers(sel, T).filter((o) => !o.isDing);
   }
 

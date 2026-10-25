@@ -6,9 +6,8 @@
 //
 // Pattern steps are space-separated tokens, one eighth note each:
 //   D      ding            .      rest            T   tak (shell)
-//   1..10  the notes of whatever you play over, low to high: on the scale
-//          that is the top tone fields; on a chord, that chord's notes
-//          (wrapping around if the chord has fewer)
+//   1..10  the notes of whatever you play over, low to high, top and
+//          bottom together (on a chord, wrapping around if it has fewer)
 //   D+5    notes struck together
 //   1..N   run up all of them   N..1  run down   N-1..2  down, skipping the top
 //   A4     a fixed note by name (only in a tuning's own scale patterns)
@@ -27,7 +26,7 @@ window.HANDPAN_PATTERNS = [
     desc: 'Return to the ding every four steps. It anchors your ear in the key while the melody wanders.',
   },
   {
-    name: 'Top ascent',
+    name: 'Full ascent',
     level: 'Beginner',
     steps: 'D 1..N . . .',
     desc: 'Climb the zig-zag from the ding to the top note. Notice how each step flips sides: that is the layout doing the work.',
@@ -57,7 +56,7 @@ window.HANDPAN_PATTERNS = [
     desc: 'A phrase falls, then answers by rising. Ending each half on a rest gives it room to breathe.',
   },
   {
-    name: 'Top cascade',
+    name: 'Cascade',
     level: 'Beginner',
     steps: 'N..1 D . . .',
     desc: 'Pour down from the top to the ding. Try it slowly with a crescendo into the final ding.',
@@ -189,50 +188,36 @@ window.HANDPAN_TUNINGS = [
         name: 'Snake charmer',
         scaleOnly: true,
         level: 'Intermediate',
-        steps: 'D 3 4 3 5 4 3 . 3 4 6 5 4 3 4 .',
+        steps: 'D 5 6 5 7 6 5 . 5 6 8 7 6 5 6 .',
         desc: 'Circle around B and C, reach up to D# and E, and always come back to B.',
       },
       {
         name: 'Bottom bloom',
         scaleOnly: true,
         level: 'Double',
-        steps: 'D G3 3 G4 6 B4 . T D Eb3 5 Ab3 6 E5 . T',
+        steps: 'D G3 5 G4 8 B4 . T D Eb3 7 Ab3 8 E5 . T',
         desc: 'Alternate top fields with bottom notes to play E minor, then a bright E major. Reach under with one hand.',
       },
       {
         name: 'Waterfall',
         scaleOnly: true,
         level: 'Double',
-        steps: 'E5 Eb5 B4 8 G4 7 6 5 4 3 D . . .',
+        steps: 'E5 Eb5 B4 11 G4 9 8 7 6 5 D . . .',
         desc: 'Pour down the whole range, swapping between bottom and top. The underside notes fill the gaps in the top ring.',
       },
       {
         name: 'Bass below',
         scaleOnly: true,
         level: 'Double',
-        steps: 'Eb3+5 . 6 7 G3+6 . 5 4 G3+3 . 4 . D . T .',
+        steps: 'Eb3+7 . 8 9 G3+8 . 7 6 G3+5 . 6 . D . T .',
         desc: 'One hand holds a bass note underneath while the other plays the melody on top. Strike both at once.',
       },
       {
         name: 'Answer from below',
         scaleOnly: true,
         level: 'Double',
-        steps: '5 6 7 . Eb5 E5 B4 . 3 4 5 . G3 Eb3 D .',
+        steps: '7 8 9 . Eb5 E5 B4 . 5 6 7 . G3 Eb3 D .',
         desc: 'The top plays a phrase, the bottom answers it. Turn the pan slightly so you can reach underneath.',
-      },
-      {
-        name: 'Whole scale up',
-        scaleOnly: true,
-        level: 'Double',
-        steps: 'D Eb3 1 G3 2 3 4 5 6 7 G4 8 B4 Eb5 E5 .',
-        desc: 'Every note of the scale from low to high, top and bottom together. Your hands keep switching between the top ring and the underside.',
-      },
-      {
-        name: 'Whole scale down',
-        scaleOnly: true,
-        level: 'Double',
-        steps: 'E5 Eb5 B4 8 G4 7 6 5 4 3 2 G3 1 Eb3 D .',
-        desc: 'The same path from the top note back down to the ding. D4 and Ab3 are left out: they sit underneath for chords, not for the scale.',
       },
     ],
   },
