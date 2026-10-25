@@ -30,18 +30,53 @@
   const audio = {
     ctx: null, master: null, wet: null, noise: null, symp: null, voices: null,
     volume: load('volume', 80), muted: load('muted', false),
+    // Phones and laptops: default on where the pointer is a finger.
+    smallSpeakers: load('smallSpeakers', window.matchMedia('(pointer: coarse)').matches),
   };
 
   function ac() {
     if (!audio.ctx) {
       const AC = window.AudioContext || window.webkitAudioContext;
       const ctx = new AC();
+      // Output chain. Volume comes after the compressor, so it works the same
+      // at any volume, and before the limiter, so nothing can clip:
+      //   master → low cut → presence → compressor → make-up → volume → limiter
+      // With small speakers, bass harmonics join in before the presence EQ.
+      const master = ctx.createGain();
+      master.gain.value = 0.7; // drives the compressor like the old default volume did
+      const lowCut = ctx.createBiquadFilter();
+      lowCut.type = 'highpass'; lowCut.Q.value = 0.7;
+      const presence = ctx.createBiquadFilter();
+      presence.type = 'peaking'; presence.frequency.value = 3000; presence.Q.value = 0.8;
       const comp = ctx.createDynamicsCompressor();
       comp.threshold.value = -16; comp.knee.value = 14; comp.ratio.value = 3.5;
       comp.attack.value = 0.004; comp.release.value = 0.25;
-      comp.connect(ctx.destination);
-      const master = ctx.createGain();
-      master.connect(comp);
+      const makeup = ctx.createGain();
+      makeup.gain.value = 1.6; // about +4 dB
+      // Limiter: catches the peaks that make-up gain and volume would push
+      // into clipping.
+      const limiter = ctx.createDynamicsCompressor();
+      limiter.threshold.value = -3; limiter.knee.value = 0; limiter.ratio.value = 20;
+      limiter.attack.value = 0.001; limiter.release.value = 0.1;
+      const volume = ctx.createGain();
+      master.connect(lowCut); lowCut.connect(presence); presence.connect(comp);
+      comp.connect(makeup); makeup.connect(volume); volume.connect(limiter);
+      limiter.connect(ctx.destination);
+      // Bass harmonics: small speakers can't play the ding's fundamental, but
+      // the ear hears a pitch from its overtones. Take the lows, saturate them
+      // to create overtones, and keep only those.
+      const bassIn = ctx.createBiquadFilter();
+      bassIn.type = 'lowpass'; bassIn.frequency.value = 220;
+      const shaper = ctx.createWaveShaper();
+      const curve = new Float32Array(1024);
+      for (let i = 0; i < curve.length; i++) curve[i] = Math.tanh(4 * (i / (curve.length - 1) * 2 - 1));
+      shaper.curve = curve;
+      const bassOut = ctx.createBiquadFilter();
+      bassOut.type = 'highpass'; bassOut.frequency.value = 220;
+      const harmonics = ctx.createGain();
+      harmonics.gain.value = 0;
+      master.connect(bassIn); bassIn.connect(shaper); shaper.connect(bassOut);
+      bassOut.connect(harmonics); harmonics.connect(presence);
       const verb = ctx.createConvolver();
       verb.buffer = impulse(ctx, 3.2);
       const wet = ctx.createGain();
@@ -52,8 +87,9 @@
       for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
       const symp = ctx.createGain();
       symp.connect(master); symp.connect(wet);
-      Object.assign(audio, { ctx, master, wet, noise, symp, voices: new Map() });
+      Object.assign(audio, { ctx, master, volumeNode: volume, lowCut, presence, harmonics, wet, noise, symp, voices: new Map() });
       applyVolume();
+      applySpeakers();
     }
     if (audio.ctx.state === 'suspended') audio.ctx.resume();
     return audio.ctx;
@@ -84,9 +120,20 @@
   }
 
   function applyVolume() {
-    if (!audio.master) return;
-    const v = audio.muted ? 0 : Math.pow(audio.volume / 100, 1.5) * 0.9;
-    audio.master.gain.setTargetAtTime(v, audio.ctx.currentTime, 0.02);
+    if (!audio.volumeNode) return;
+    const v = audio.muted ? 0 : Math.pow(audio.volume / 100, 1.5) * 1.25;
+    audio.volumeNode.gain.setTargetAtTime(v, audio.ctx.currentTime, 0.02);
+  }
+
+  // Small speakers: cut the lows they can't play (that headroom goes to
+  // what they can), lift the presence range, and add bass harmonics.
+  function applySpeakers() {
+    if (!audio.lowCut) return;
+    const small = audio.smallSpeakers;
+    const t = audio.ctx.currentTime;
+    audio.lowCut.frequency.setTargetAtTime(small ? 160 : 70, t, 0.05);
+    audio.presence.gain.setTargetAtTime(small ? 4 : 0, t, 0.05);
+    audio.harmonics.gain.setTargetAtTime(small ? 0.5 : 0, t, 0.05);
   }
 
   function out(node) { node.connect(audio.master); node.connect(audio.wet); }
@@ -746,6 +793,14 @@
     refSelect.addEventListener('change', () => { refHz = Number(refSelect.value); save('refHz', refHz); });
     $('btn-mute').addEventListener('click', () => { audio.muted = !audio.muted; save('muted', audio.muted); renderMute(); applyVolume(); });
     renderMute();
+    const speakers = $('btn-speakers');
+    speakers.setAttribute('aria-pressed', String(audio.smallSpeakers));
+    speakers.addEventListener('click', () => {
+      audio.smallSpeakers = !audio.smallSpeakers;
+      save('smallSpeakers', audio.smallSpeakers);
+      speakers.setAttribute('aria-pressed', String(audio.smallSpeakers));
+      applySpeakers();
+    });
 
     document.addEventListener('keydown', (e) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
