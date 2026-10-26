@@ -9,12 +9,14 @@ A playable handpan in the browser. Plain HTML/CSS/JS, no build step.
 - Scales and chords highlighted on the instrument (chords are detected automatically for each tuning)
 - Guided playing patterns with step notation, R/L hand hints, tempo and loop
 - Chord grooves: patterns built from any chord on the current tuning, linked to the chord picked under Scales & chords
+- Chord progressions: the pattern plays once over each chord in turn (Andalusian, Epic, Pop…), picked from the chords each tuning actually has; B Hijaz adds its own
 - Synthesized sound (WebAudio): tuned partial pairs that shimmer, a bright-to-mellow strike, sympathetic resonance between fields, the ding's cavity boom, stereo placement, a warm room reverb, and a tak (click, shell ring, cavity pop, nearby fields humming) placed where you tap the shell
-- Keyboard: Space = ding, 1–9/0 = tone fields, T = tak, P = play/stop pattern
+- Keyboard: Space or P = play/stop pattern, D = ding, 1–9/0 = tone fields, T = tak; play along while a pattern runs
+- Arpeggios over any chord or progression, from simple up/down to whole-chord sweeps
 
 ## Adding a tuning or pattern
 
-Edit `tunings.js`. Each tuning lists its ding, its top notes from low to high (they are laid out in the usual zig-zag), and optional bottom notes with angles. Pattern syntax is documented at the top of that file.
+Edit `tunings.js`. Each tuning lists its ding, its top notes from low to high (they are laid out in the usual zig-zag), and optional bottom notes with angles. Pattern syntax is documented at the top of that file. Generic chord progressions live in `PROGRESSIONS` in `model.js`; a tuning can add its own by chord name.
 
 ## Run locally
 

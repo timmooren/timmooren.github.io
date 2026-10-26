@@ -10,15 +10,16 @@
 //          bottom together (on a chord, wrapping around if it has fewer)
 //   D+5    notes struck together
 //   1..N   run up all of them   N..1  run down   N-1..2  down, skipping the top
+//   N      the highest of them  N-1   the one below it
 //   A4     a fixed note by name (only in a tuning's own scale patterns)
+//
+// Chord progressions are generated for every tuning from the chords it has
+// (see PROGRESSIONS in model.js). A tuning can add its own as `progressions`:
+//   { name, chords: ['B', 'Em'], desc }  chords by selection name
 
+// Arpeggios (`arpeggio: true`) play a chord's notes one at a time, so they
+// are only offered over a chord or a progression.
 window.HANDPAN_PATTERNS = [
-  {
-    name: 'Heartbeat',
-    level: 'Beginner',
-    steps: 'D . T . D D T .',
-    desc: 'The first groove everyone learns. Ding on the beat, a tak on the off-beat. Keep it steady before adding notes.',
-  },
   {
     name: 'Ding and walk',
     level: 'Beginner',
@@ -157,6 +158,69 @@ window.HANDPAN_PATTERNS = [
     steps: 'D+7 6 1+5 4 D+6 5 1+4 3',
     desc: 'Pairs that close in from the outside while a single note answers. Watch that your hands do not collide.',
   },
+  {
+    name: 'Arpeggio up',
+    level: 'Beginner',
+    arpeggio: true,
+    steps: '1..N . .',
+    desc: 'Every note of the chord on your pan, low to high, top and bottom. Bigger chords take longer: keep the pulse steady.',
+  },
+  {
+    name: 'Arpeggio down',
+    level: 'Beginner',
+    arpeggio: true,
+    steps: 'N..1 . .',
+    desc: 'Every chord note falling from the top. Land softly on the lowest one.',
+  },
+  {
+    name: 'Arpeggio up and down',
+    level: 'Beginner',
+    arpeggio: true,
+    steps: '1..N N-1..2',
+    desc: 'Up through the whole chord and straight back, so the loop never stops moving.',
+  },
+  {
+    name: 'Low triad',
+    level: 'Beginner',
+    arpeggio: true,
+    steps: '1 2 3 . 1 2 3 .',
+    desc: 'Only the three lowest chord notes, twice. A small shape to learn first; Arpeggio up adds the rest.',
+  },
+  {
+    name: 'Alberti',
+    level: 'Intermediate',
+    arpeggio: true,
+    steps: '1 3 2 3 1 3 2 3',
+    desc: 'Low, high, middle, high on the three lowest chord notes: the classical piano accompaniment, for under a melody.',
+  },
+  {
+    name: 'Arpeggio and tak',
+    level: 'Intermediate',
+    arpeggio: true,
+    steps: '1..N T N-1..1 T',
+    desc: 'Up the whole chord, a tak, back down, a tak, so the harmony gets a beat.',
+  },
+  {
+    name: 'Bell on top',
+    level: 'Advanced',
+    arpeggio: true,
+    steps: '1 N 2 N 1 N 2 N',
+    desc: 'The chord\'s highest note rings like a bell between its two lowest, a hand span apart.',
+  },
+  {
+    name: 'Rolled chord',
+    level: 'Advanced',
+    arpeggio: true,
+    steps: '1+3 . 2 3 1+3 . 2 1',
+    desc: 'Two chord notes struck together, then the one between them.',
+  },
+];
+
+// Shared by D Kurd 9 and 10.
+const KURD_PROGRESSIONS = [
+  { name: 'Lament', chords: ['Dm', 'Gm', 'C', 'F'], desc: 'Walks the circle of fifths from home to F: a sad song that finds its feet.' },
+  { name: 'Night drive', chords: ['Dm', 'Am', 'Bb', 'C'], desc: 'Home, the dark fifth, then a two-step climb that leads back.' },
+  { name: 'Open breath', chords: ['Dsus2', 'Bb', 'Fsus2', 'C'], desc: 'Open sus2 chords around Bb and C: floating and unresolved, made for long rings.' },
 ];
 
 window.HANDPAN_TUNINGS = [
@@ -169,12 +233,17 @@ window.HANDPAN_TUNINGS = [
     mood: 'Middle-Eastern and dramatic. The half step from C down to B is the signature sound. Bottom notes complete the scale and open up extra chords.',
     selections: [
       { name: 'B Hijaz scale', scale: true, root: 11, pcs: [11, 0, 3, 4, 6, 7, 9], desc: 'Complete with the bottom G. C to B is the signature.' },
-      { name: 'B major', root: 11, pcs: [11, 3, 6], desc: 'B D# F#. Home chord; end phrases here.' },
+      { name: 'B', root: 11, pcs: [11, 3, 6], desc: 'B D# F#. Home chord; end phrases here.' },
       { name: 'B7', root: 11, pcs: [11, 3, 6, 9], desc: 'B D# F# A. Tension that wants E minor or back to B.' },
-      { name: 'E minor', root: 4, pcs: [4, 7, 11], desc: 'E G B. Restful; uses the bottom G notes.' },
-      { name: 'A minor', root: 9, pcs: [9, 0, 4], desc: 'A C E. Melancholic; resolve to B major.' },
-      { name: 'E major', root: 4, pcs: [4, 8, 11], desc: 'E G# B. Bright surprise via the bottom Ab.' },
-      { name: 'D# diminished', root: 3, pcs: [3, 6, 9, 0], desc: 'D# F# A C. Maximum tension; release onto E or B.' },
+      { name: 'Em', root: 4, pcs: [4, 7, 11], desc: 'E G B. Restful; uses the bottom G notes.' },
+      { name: 'Am', root: 9, pcs: [9, 0, 4], desc: 'A C E. Melancholic; resolve to B major.' },
+      { name: 'E', root: 4, pcs: [4, 8, 11], desc: 'E G# B. Bright surprise via the bottom Ab.' },
+      { name: 'D#dim', root: 3, pcs: [3, 6, 9, 0], desc: 'D# F# A C. Maximum tension; release onto E or B.' },
+    ],
+    progressions: [
+      { name: 'Hijaz cadence', chords: ['B', 'Em', 'Am', 'B7'], desc: 'Out to E minor and A minor, then B7 pulls back home.' },
+      { name: 'Dark side', chords: ['Em', 'Am', 'B7', 'B'], desc: 'Starts in the minor chords that give Hijaz its dark colour, then climbs back to its major home.' },
+      { name: 'Tension and release', chords: ['B', 'D#dim', 'Em', 'B7'], desc: 'D# diminished leans into E minor; B7 brings it home.' },
     ],
     patterns: [
       {
@@ -227,6 +296,7 @@ window.HANDPAN_TUNINGS = [
     ding: 'D3',
     top: ['A3', 'Bb3', 'C4', 'D4', 'E4', 'F4', 'G4', 'A4'],
     mood: 'The most common handpan scale: D natural minor. Soft, melancholic and impossible to play wrong.',
+    progressions: KURD_PROGRESSIONS,
   },
   {
     id: 'd-kurd-10',
@@ -234,6 +304,7 @@ window.HANDPAN_TUNINGS = [
     ding: 'D3',
     top: ['A3', 'Bb3', 'C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'C5'],
     mood: 'D Kurd with an extra high C. More room for melodies above the octave.',
+    progressions: KURD_PROGRESSIONS,
   },
   {
     id: 'd-celtic',
@@ -241,6 +312,11 @@ window.HANDPAN_TUNINGS = [
     ding: 'D3',
     top: ['A3', 'C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'C5'],
     mood: 'Dorian-flavored minor without the dark Bb. Open, folky, a little hopeful.',
+    progressions: [
+      { name: 'Reel', chords: ['Dm', 'C', 'Dm', 'Am'], desc: 'The shape of a folk reel: a step down to C, home, then out to A minor.' },
+      { name: 'Dorian lift', chords: ['Dm', 'Gsus2', 'Dm', 'Csus2'], desc: 'With no Bb, Gsus2 hints at G major: hopeful without leaving minor.' },
+      { name: 'Hills', chords: ['F', 'C', 'Dm', 'Am'], desc: 'Starts on the bright F and settles into minor.' },
+    ],
   },
   {
     id: 'd-integral',
@@ -248,6 +324,11 @@ window.HANDPAN_TUNINGS = [
     ding: 'D3',
     top: ['A3', 'Bb3', 'C4', 'D4', 'E4', 'F4', 'A4'],
     mood: 'A spacious minor with no G. Fewer notes, lots of air between them; great for meditation.',
+    progressions: [
+      { name: 'Meditation', chords: ['Dsus2', 'Bbsus2'], desc: 'Two open chords and lots of air. Play slowly and let them ring.' },
+      { name: 'Deep tide', chords: ['Dm', 'Bb', 'F', 'Am'], desc: 'Rises to F and sinks back through A minor.' },
+      { name: 'Still water', chords: ['Dm7', 'F', 'Bb', 'F'], desc: 'Dm7 and F share most of their notes; Bb adds the only shadow.' },
+    ],
   },
   {
     id: 'd-hijaz',
@@ -255,6 +336,11 @@ window.HANDPAN_TUNINGS = [
     ding: 'D3',
     top: ['A3', 'Bb3', 'C#4', 'D4', 'E4', 'F4', 'G4', 'A4'],
     mood: 'Exotic and tense. The jump from Bb to C# gives it a desert, Andalusian character.',
+    progressions: [
+      { name: 'Hijaz cadence', chords: ['Dm', 'Gm', 'Bb', 'A'], desc: 'Gm and Bb climb to A major, which falls hard back home: the Andalusian sound.' },
+      { name: 'Half step', chords: ['A', 'Bb', 'A', 'Dm'], desc: 'A to Bb and back is the Hijaz signature; Dm lets it rest.' },
+      { name: 'Tension and release', chords: ['Dm', 'Bbm', 'Edim', 'A'], desc: 'Bb minor darkens, E diminished tightens, A major snaps back to Dm.' },
+    ],
   },
   {
     id: 'f-low-pygmy',
@@ -262,6 +348,11 @@ window.HANDPAN_TUNINGS = [
     ding: 'F3',
     top: ['G3', 'Ab3', 'C4', 'Eb4', 'F4', 'G4', 'Ab4', 'C5'],
     mood: 'A pentatonic-style minor with an earthy, tribal feel. Every combination sounds good.',
+    progressions: [
+      { name: 'Earth', chords: ['Fm', 'Ab', 'Cm', 'Ab'], desc: 'Rises through Ab to C minor and floats back. No wrong notes anywhere.' },
+      { name: 'Rain', chords: ['Fm', 'Cm', 'Fsus2', 'Ab'], desc: 'Fsus2 opens the home chord halfway through, so the loop never quite lands.' },
+      { name: 'Drum circle', chords: ['Fm7', 'Fsus2'], desc: 'Two colours of the same home: run a steady groove and let the harmony shimmer.' },
+    ],
   },
   {
     id: 'f-equinox',
@@ -269,6 +360,11 @@ window.HANDPAN_TUNINGS = [
     ding: 'F3',
     top: ['Ab3', 'C4', 'Db4', 'Eb4', 'F4', 'G4', 'Ab4', 'C5'],
     mood: 'Deep and warm minor. The Db gives it a soft, dreamy weight.',
+    progressions: [
+      { name: 'Equinox', chords: ['Fm', 'Db', 'Ab', 'Cm'], desc: 'Db brings the weight, Ab the light, and C minor turns it home.' },
+      { name: 'Dusk', chords: ['Fm7', 'Db', 'Fm7', 'Cm'], desc: 'Sways between home and the warm Db.' },
+      { name: 'Slow rise', chords: ['Db', 'Ab', 'Cm', 'Fm'], desc: 'Starts warm on Db and climbs to the minor home.' },
+    ],
   },
   {
     id: 'c-major',
@@ -276,6 +372,11 @@ window.HANDPAN_TUNINGS = [
     ding: 'C3',
     top: ['G3', 'A3', 'B3', 'C4', 'D4', 'E4', 'F4', 'G4'],
     mood: 'Bright and happy. Folk tunes and lullabies fall naturally under your hands.',
+    progressions: [
+      { name: 'Canon', chords: ['C', 'G', 'Am', 'Em', 'F', 'C', 'F', 'G'], desc: 'Pachelbel\'s Canon: eight chords stepping down like bells.' },
+      { name: 'Lullaby', chords: ['C', 'Am', 'Dm', 'G'], desc: 'The gentle loop under countless lullabies and old standards.' },
+      { name: 'Sunny', chords: ['C', 'Em', 'F', 'G'], desc: 'Climbs one chord at a time to G, which drops back home.' },
+    ],
   },
   {
     id: 'cs-annaziska',
@@ -283,5 +384,10 @@ window.HANDPAN_TUNINGS = [
     ding: 'C#3',
     top: ['G#3', 'B3', 'C#4', 'D#4', 'E4', 'F#4', 'G#4', 'B4', 'C#5'],
     mood: 'C# minor with a lifted second. Cinematic and emotional, with a wide range.',
+    progressions: [
+      { name: 'Soundtrack', chords: ['C#m', 'E', 'B', 'F#sus2'], desc: 'The lifted F#sus2 keeps it hanging: big and cinematic.' },
+      { name: 'Anthem', chords: ['E', 'B', 'C#m', 'G#m'], desc: 'Starts bright on E and lands in minor: emotional and wide.' },
+      { name: 'Open sky', chords: ['C#sus2', 'Bsus2', 'Esus2', 'C#m'], desc: 'Open sus2 chords drift down and finally settle on C# minor.' },
+    ],
   },
 ];

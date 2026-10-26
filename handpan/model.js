@@ -26,6 +26,23 @@
     { suffix: 'm7', label: 'minor 7th', iv: [0, 3, 7, 10], desc: 'Mellow and jazzy.' },
   ];
 
+  // Chord progressions, as chord roots in semitones above the ding. Each
+  // root takes the tuning's own chord on it (a triad if there is one), so
+  // the same progression comes out minor on a minor pan and major on a major
+  // one. A tuning can add its own with chord names (see tunings.js).
+  const PROGRESSIONS = [
+    { name: 'Two-step', roots: [0, 10], desc: 'Rock between home and the chord a step below. The backbone of countless handpan jams.' },
+    { name: 'Home and away', roots: [0, 7], desc: 'Home and the fifth: the simplest pull and release.' },
+    { name: 'Relative', roots: [0, 3], desc: 'Minor home and its relative major: same notes, a different light.' },
+    { name: 'Drift', roots: [0, 8], desc: 'Home and the chord a sixth up. Wide and wistful.' },
+    { name: 'Epic', roots: [0, 8, 10, 0], desc: 'Climbs two steps and lands back home, like a film score.' },
+    { name: 'Andalusian', roots: [0, 10, 8, 7], desc: 'Falls step by step to the fifth, which pulls back home.' },
+    { name: 'Minor pop', roots: [0, 8, 3, 10], desc: 'The four chords behind a thousand ballads.' },
+    { name: 'Pop', roots: [0, 7, 9, 5], desc: 'The four chords behind a thousand pop songs.' },
+    { name: 'Doo-wop', roots: [0, 9, 5, 7], desc: 'The fifties ballad loop: the fifth at the end leads straight back home.' },
+    { name: 'Folk', roots: [0, 5, 0, 7], desc: 'Home, four, home, five: the shape of countless folk tunes.' },
+  ];
+
   // ---------- model ----------
   function buildTuning(def) {
     const notes = [];
@@ -74,7 +91,31 @@
       });
     }
 
-    return { def, notes, selections, dingPc };
+    return { def, notes, selections, dingPc, progressions: buildProgressions(def, selections, dingPc) };
+  }
+
+  // Progressions that fit a tuning: [{ name, chords: [selection index], desc }].
+  // Generic ones are skipped when a root has no chord, and so are ones that
+  // come out the same as one already listed.
+  function buildProgressions(def, selections, dingPc) {
+    const onRoot = (root) => {
+      const chords = selections.map((s, i) => ({ s, i })).filter(({ s }) => !s.scale && s.root === root);
+      const triad = chords.find(({ s }) => s.pcs.length === 3) || chords[0];
+      return triad ? triad.i : -1;
+    };
+    const own = (def.progressions || []).map((p) => ({
+      name: p.name, desc: p.desc, own: true, chords: p.chords.map((n) => selections.findIndex((s) => s.name === n)),
+    }));
+    const generic = PROGRESSIONS.map((p) => ({
+      name: p.name, desc: p.desc, chords: p.roots.map((r) => onRoot((dingPc + r) % 12)),
+    }));
+    const seen = new Set();
+    return own.concat(generic).filter((p) => {
+      const key = p.chords.join(' ');
+      if (p.chords.includes(-1) || new Set(p.chords).size < 2 || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
   }
 
   // Returns [{kind:'notes'|'tak'|'rest', notes:[note], hand}] or null if the
@@ -86,6 +127,8 @@
     const num = (t) => (t === 'N' ? N : t.startsWith('N-') ? N - Number(t.slice(2)) : Number(t));
     const tokens = [];
     for (const tok of src.trim().split(/\s+/)) {
+      // N on its own is the highest numbered note, N-1 the one below it.
+      if (/^N(?:-\d+)?$/.test(tok)) { tokens.push(String(num(tok))); continue; }
       const m = /^(\d+|N(?:-\d+)?)\.\.(\d+|N(?:-\d+)?)$/.exec(tok);
       if (!m) { tokens.push(tok); continue; }
       // Ranges starting at N run down (and are empty if there is no room).
@@ -141,13 +184,39 @@
   // The patterns that fit a tuning when playing over one of its selections.
   // A tuning's own patterns (`own`) are written for its scale, so they only
   // appear there; the generic ones (`shared`) adapt to anything.
-  function patternsFor(T, selIndex, shared) {
+  // Whether a pattern plays any numbered notes. One that only uses the ding
+  // and taks sounds the same over every chord.
+  const usesChordNotes = (p) => /(^|[\s+])(\d+|N)(?=$|[\s+.])/.test(p.steps);
+
+  // Steps are eighth notes. A run is padded with rests to whole pairs of
+  // beats (4 steps), and to at least `min` steps, so a loop always lands on
+  // a beat: `1..N` on a seven-note chord would otherwise make an 11-step run.
+  const BEAT_PAIR = 4;
+  function padRun(steps, min) {
+    const len = Math.ceil(Math.max(steps.length, min || 0) / BEAT_PAIR) * BEAT_PAIR;
+    return steps.concat(Array.from({ length: len - steps.length }, () => ({ kind: 'rest' })));
+  }
+
+  // In a progression, pass its chords as `within`: only patterns that fit
+  // every one of them are kept, so the progression never stops halfway, and
+  // that use chord notes, so you can hear the chords change. Each run is
+  // padded to the longest run among the chords, so every chord lasts as long
+  // as the others and the changes come round evenly.
+  function patternsFor(T, selIndex, shared, within) {
     const sel = T.selections[selIndex];
     const degrees = degreesFor(sel, T);
     const own = (T.def.patterns || []).filter((p) => sel.scale || !p.scaleOnly).map((p) => Object.assign({ own: true }, p));
-    const patterns = own.concat(shared)
+    // Arpeggios break a chord into its notes, so they need a chord.
+    let patterns = own.concat(shared.filter((p) => !(sel.scale && p.arpeggio)))
       .map((p) => Object.assign({}, p, { parsed: parsePattern(p.steps, T.notes, degrees, !sel.scale) }))
       .filter((p) => p.parsed);
+    const longest = new Map();
+    if (within) {
+      const others = within.filter((i) => i !== selIndex).map((i) => new Map(patternsFor(T, i, shared).patterns.map((p) => [p.name, p.parsed.length])));
+      patterns = patterns.filter((p) => usesChordNotes(p) && others.every((lengths) => lengths.has(p.name)));
+      others.forEach((lengths) => lengths.forEach((len, name) => longest.set(name, Math.max(longest.get(name) || 0, len))));
+    }
+    patterns.forEach((p) => { p.parsed = padRun(p.parsed, longest.get(p.name)); });
     return { degrees, patterns };
   }
 
@@ -164,10 +233,22 @@
     return play.next++;
   }
 
+  // Which chord of a progression the next run plays over, called on beat 1.
+  // `prog` is { chords, pos, fresh }: it moves on one chord per run, except
+  // that a progression just picked or jumped into (`fresh`) starts where it
+  // is. Returns the position, or -1 once a progression without loop has
+  // played its last chord.
+  function nextChord(prog, loop) {
+    if (prog.fresh) { prog.fresh = false; return prog.pos; }
+    if (prog.pos + 1 >= prog.chords.length && !loop) return -1;
+    prog.pos = (prog.pos + 1) % prog.chords.length;
+    return prog.pos;
+  }
+
   const api = {
-    CX, CY, RING, SHELL, DING_R, CHORD_TYPES,
+    CX, CY, RING, SHELL, DING_R, CHORD_TYPES, PROGRESSIONS,
     toMidi, pc, pitchClass, fieldRadius, buildTuning, parsePattern,
-    selectionMembers, degreesFor, patternsFor, nextStep,
+    selectionMembers, degreesFor, usesChordNotes, patternsFor, nextStep, nextChord,
   };
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.HandpanModel = api;

@@ -4,7 +4,7 @@
   const TUNINGS = window.HANDPAN_TUNINGS;
   const PATTERNS = window.HANDPAN_PATTERNS;
   const {
-    CX, CY, SHELL, pc, buildTuning, selectionMembers, patternsFor: patternsForAll, nextStep,
+    CX, CY, SHELL, pc, buildTuning, selectionMembers, usesChordNotes, patternsFor: patternsForAll, nextStep, nextChord,
   } = window.HandpanModel;
   const SVG_NS = 'http://www.w3.org/2000/svg';
   const STORE = 'handpan.';
@@ -335,6 +335,8 @@
   const state = {
     tuning: null,
     selIndex: 0, // what you play over: the scale or a chord
+    prog: null, // a chord progression: { index, chords, pos, fresh }; selIndex follows its chord
+    lastProg: 0, // the progression to return to when switching back to that mode
     degrees: [], // its numbered notes, low to high
     patterns: [], // patterns built on those notes
     patName: null,
@@ -361,9 +363,9 @@
     el('stop', { offset: '70%', 'stop-color': 'var(--shell)' }, grad);
     el('stop', { offset: '100%', 'stop-color': 'var(--shell-lo)' }, grad);
     const shell = el('circle', { cx: CX, cy: CY, r: SHELL, fill: 'url(#shell-' + side + ')', class: 'shell' }, svg);
+    // Playing along: taps on the pan sound over a running pattern.
     shell.addEventListener('pointerdown', (e) => {
       e.preventDefault();
-      stopPlayback();
       const p = ripple(svg, e);
       // Undo the mirror so the position is in the field coordinates.
       const x = side === 'bottom' && state.mirrored ? 2 * CX - p.x : p.x;
@@ -391,7 +393,6 @@
     const hasBottom = T.notes.some((o) => o.side === 'bottom');
     const layers = { top: drawShell($('svg-top'), 'top') };
     $('fig-bottom').hidden = !hasBottom;
-    $('pans').classList.toggle('single', !hasBottom);
     if (hasBottom) layers.bottom = drawShell($('svg-bottom'), 'bottom');
     else $('svg-bottom').textContent = '';
 
@@ -402,9 +403,9 @@
       o.fs = o.r > 40 ? 17 : o.r > 30 ? 14 : 12;
       o.label = el('text', { 'text-anchor': 'middle', class: 'note-label', 'font-size': o.fs }, g);
       o.label.textContent = o.name;
-      o.numLabel = el('text', { 'text-anchor': 'middle', class: 'note-num', 'font-size': 10 }, g);
+      o.numLabel = el('text', { 'text-anchor': 'middle', class: 'note-num', 'font-size': 11 }, g);
       o.g = g;
-      const hit = (e) => { e.preventDefault(); stopPlayback(); strike(o.midi); flash(o); };
+      const hit = (e) => { e.preventDefault(); strike(o.midi); flash(o); };
       g.addEventListener('pointerdown', (e) => { e.stopPropagation(); hit(e); });
       g.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); hit(e); } });
     });
@@ -453,10 +454,10 @@
     $('svg-top').setAttribute('aria-label', 'Top of ' + T.def.name + ' handpan, ' + count + ' notes in total');
   }
 
-  const patternsFor = (T, selIndex) => patternsForAll(T, selIndex, PATTERNS);
+  const patternsFor = (T, selIndex, within) => patternsForAll(T, selIndex, PATTERNS, within);
 
   function buildPatterns() {
-    const { degrees, patterns } = patternsFor(state.tuning, state.selIndex);
+    const { degrees, patterns } = patternsFor(state.tuning, state.selIndex, state.prog && state.prog.chords);
     state.degrees = degrees;
     state.patterns = patterns;
   }
@@ -478,6 +479,11 @@
       const off = !!name && !has(state.tuning, i);
       b.classList.toggle('unavailable', off);
       b.title = off ? name + ' is not available here; switching stops it' : '';
+    });
+    [...$('prog-select').querySelectorAll('option')].forEach((opt) => {
+      const { chords } = state.tuning.progressions[opt.value];
+      const off = !!name && !patternsFor(state.tuning, chords[0], chords).patterns.some((p) => p.name === name);
+      opt.textContent = opt.dataset.label + (off ? ' · no ' + name : '');
     });
     [...$('tuning-select').options].forEach((opt) => {
       const off = !!name && !has(tuningFor(opt.value), 0);
@@ -507,8 +513,14 @@
     // Patterns written for this tuning first, then the ones that work anywhere.
     // Ones that don't fit the current pick are listed greyed out, with why.
     const ownAll = (T.def.patterns || []).filter((p) => p.level === level);
-    const genericAll = PATTERNS.filter((p) => p.level === level);
-    [[T.def.name + ' only', ownAll, T.def.name + ' scale only'], ['All tunings', genericAll, 'needs more notes']].forEach(([label, list, why]) => {
+    const genericAll = PATTERNS.filter((p) => p.level === level && !p.arpeggio);
+    const arpeggioAll = PATTERNS.filter((p) => p.level === level && p.arpeggio);
+    const onScale = T.selections[state.selIndex].scale;
+    [
+      [T.def.name + ' only', ownAll, T.def.name + ' scale only'],
+      ['All tunings', genericAll, 'needs more notes'],
+      ['Arpeggios', arpeggioAll, onScale ? 'pick a chord or progression' : 'needs more notes'],
+    ].forEach(([label, list, why]) => {
       if (!list.length) return;
       const og = document.createElement('optgroup');
       og.label = label;
@@ -516,7 +528,7 @@
         const opt = document.createElement('option');
         opt.value = p.name;
         opt.disabled = !available.has(p.name);
-        opt.textContent = p.name + (opt.disabled ? ' (' + why + ')' : '');
+        opt.textContent = p.name + (opt.disabled ? ' (' + (state.prog && !p.scaleOnly && !usesChordNotes(p) ? 'no chord notes' : why) + ')' : '');
         og.appendChild(opt);
       });
       patSelect.appendChild(og);
@@ -542,7 +554,7 @@
       const inSel = members.includes(o);
       const isRoot = inSel && pc(o.midi) === sel.root;
       o.g.classList.toggle('root', isRoot);
-      o.g.classList.toggle('sel', (inSel || o.isDing) && !isRoot);
+      o.g.classList.toggle('sel', inSel && !isRoot);
       o.g.classList.toggle('dim', !inSel && !o.isDing);
       const i = state.degrees.indexOf(o);
       o.dispNum = o.isDing ? 'ding' : i >= 0 ? String(i + 1) : '';
@@ -550,16 +562,45 @@
     });
     layout();
 
-    const names = [...new Set(members.map((o) => o.name))];
+    $('legend-root').textContent = sel.scale ? 'Home' : 'Chord root';
+    $('legend-sel').textContent = sel.scale ? 'In scale' : 'In chord';
+
+    // Play over: one picker at a time, the scale and chords or a progression.
+    const prog = state.prog && T.progressions[state.prog.index];
+    document.querySelectorAll('#mode-seg button').forEach((b) => b.setAttribute('aria-checked', String((b.dataset.mode === 'prog') === !!prog)));
+    $('single-pick').hidden = !!prog;
+    $('prog-pick').hidden = !prog;
     $('sel-desc').textContent = '';
-    const d = document.createElement('span');
-    d.textContent = sel.desc + ' ';
-    const n = document.createElement('span');
-    n.className = 'note-list';
-    n.textContent = names.join(' · ');
-    $('sel-desc').append(d, n);
+    if (prog) $('sel-desc').textContent = prog.desc;
+    else {
+      const n = document.createElement('span');
+      n.className = 'note-list';
+      n.textContent = [...new Set(members.map((o) => o.name))].join(' · ');
+      $('sel-desc').append(sel.desc + ' ', n);
+    }
     const chips = $('sel-chips');
     [...chips.children].forEach((b, i) => b.setAttribute('aria-pressed', String(i === state.selIndex)));
+    if (prog) $('prog-select').value = String(state.prog.index);
+    // The progression's chords, one per run of the pattern: the current one
+    // lit (and filling up while it plays), the next one dashed.
+    const bars = $('prog-bars');
+    bars.textContent = '';
+    if (prog) {
+      const n = prog.chords.length;
+      const next = state.prog.pos + 1 < n || state.loop ? (state.prog.pos + 1) % n : -1;
+      prog.chords.forEach((selIndex, pos) => {
+        const li = document.createElement('li');
+        const btn = document.createElement('button');
+        btn.textContent = T.selections[selIndex].name;
+        btn.setAttribute('aria-current', String(pos === state.prog.pos));
+        if (state.playing && pos === next && pos !== state.prog.pos) btn.dataset.next = 'true';
+        if (state.playing && pos === state.prog.pos) btn.style.setProperty('--p', 0);
+        btn.title = 'Go to this chord';
+        btn.addEventListener('click', () => goToChord(pos, true));
+        li.appendChild(btn);
+        bars.appendChild(li);
+      });
+    }
     // On phones the chips are one swipeable row: keep the picked one in view.
     const picked = chips.children[state.selIndex];
     if (picked && chips.scrollWidth > chips.clientWidth) {
@@ -571,6 +612,9 @@
 
     const pat = currentPattern();
     $('pat-desc').textContent = pat ? pat.desc : '';
+    // The player bar says what is playing, and in a progression which chord.
+    $('now-pat').textContent = pat ? pat.name : 'No pattern fits';
+    $('now-over').textContent = prog ? prog.name + ' · ' + sel.name : sel.name;
     const list = $('pat-steps');
     list.textContent = '';
     (pat ? pat.parsed : []).forEach((s, i) => {
@@ -623,9 +667,50 @@
       const b = document.createElement('button');
       b.className = 'chip';
       b.textContent = sel.name;
-      b.addEventListener('click', () => { state.selIndex = i; refreshPatterns(); });
+      b.addEventListener('click', () => { state.prog = null; state.selIndex = i; refreshPatterns(); });
       chips.appendChild(b);
     });
+    // Progressions: this tuning's own first, then the ones every tuning gets.
+    const select = $('prog-select');
+    select.textContent = '';
+    $('mode-seg').hidden = !T.progressions.length;
+    [[T.def.name + ' only', (p) => p.own], ['All tunings', (p) => !p.own]].forEach(([label, pick]) => {
+      const list = T.progressions.map((p, i) => ({ p, i })).filter(({ p }) => pick(p));
+      if (!list.length) return;
+      const og = document.createElement('optgroup');
+      og.label = label;
+      list.forEach(({ p, i }) => {
+        const opt = document.createElement('option');
+        opt.value = String(i);
+        opt.dataset.label = p.name + ' (' + p.chords.map((c) => T.selections[c].name).join(' – ') + ')';
+        opt.textContent = opt.dataset.label;
+        og.appendChild(opt);
+      });
+      select.appendChild(og);
+    });
+    const home = T.progressions.length ? T.selections[T.progressions[0].chords[0]].name : '';
+    $('prog-hint').textContent = 'Built from the chords on ' + T.def.name + ', so every tuning has its own. Each chord lasts one run of the pattern; most start on the home chord, ' + home + '.';
+  }
+
+  function setMode(mode) {
+    if (mode === 'prog' && !state.prog) pickProgression(Math.min(state.lastProg, state.tuning.progressions.length - 1));
+    if (mode === 'single' && state.prog) { state.prog = null; refreshPatterns(); }
+  }
+
+  // Playing over a progression: the pattern runs once per chord. While
+  // playing, a new pick (or a jump to one of its chords) comes in on beat 1.
+  function pickProgression(index) {
+    const { chords } = state.tuning.progressions[index];
+    state.prog = { index, chords, pos: 0, fresh: true };
+    state.lastProg = index;
+    goToChord(0, true);
+  }
+
+  function goToChord(pos, fresh) {
+    state.prog.pos = pos;
+    if (fresh) state.prog.fresh = true;
+    state.selIndex = state.prog.chords[pos];
+    refreshPatterns();
   }
 
   // ---------- playback ----------
@@ -644,29 +729,37 @@
   function setPlayButton(btn, playing) {
     btn.classList.toggle('playing', playing);
     btn.setAttribute('aria-label', playing ? 'Stop' : 'Play');
-    btn.title = playing ? 'Stop' : 'Play';
+    btn.title = (playing ? 'Stop' : 'Play') + ' (Space)';
     btn.innerHTML = playing ? ICON_STOP : ICON_PLAY;
   }
 
   function updatePlayButtons() {
     const playing = !!state.playing;
     setPlayButton($('btn-play-pat'), playing);
-    setPlayButton($('btn-fab'), playing);
-    markAvailability();
+    paint(); // the progression's next chord is only marked while playing
   }
 
-  // Pick a random scale or chord, and a random pattern on it, on this tuning.
-  // While playing, the new pick starts on beat 1 after the current run.
+  // Pick a random scale, chord or progression, and a random pattern on it,
+  // on this tuning. While playing, the new pick starts on beat 1 after the
+  // current run.
   function randomize() {
     const T = state.tuning;
-    const before = state.selIndex + '/' + state.patName;
+    const key = () => (state.prog ? 'p' + state.prog.index : state.selIndex) + '/' + state.patName;
+    const before = key();
     for (let tries = 0; tries < 8; tries++) {
-      state.selIndex = Math.floor(Math.random() * T.selections.length);
+      const k = Math.floor(Math.random() * (T.selections.length + T.progressions.length));
+      if (k < T.selections.length) { state.prog = null; state.selIndex = k; }
+      else {
+        const { chords } = T.progressions[k - T.selections.length];
+        state.prog = { index: k - T.selections.length, chords, pos: 0, fresh: true };
+        state.lastProg = state.prog.index;
+        state.selIndex = chords[0];
+      }
       buildPatterns();
       const pick = state.patterns[Math.floor(Math.random() * state.patterns.length)];
       state.patName = pick.name;
       state.level = pick.level;
-      if (state.selIndex + '/' + state.patName !== before) break;
+      if (key() !== before) break;
     }
     save('level', state.level);
     fillPatternSelect();
@@ -679,17 +772,32 @@
     if (!pat) return;
     const ctx = ac();
     const p = { timers: [], steps: pat.parsed, next: from || 0, time: ctx.currentTime + 0.08 };
+    // Started mid-run, the current chord of a progression is already playing.
+    if (state.prog) state.prog.fresh = !from;
     // Lookahead scheduler: queue audio slightly ahead so tempo stays steady.
     // Switching scale, chord or tuning mid-pattern lets the current run
-    // finish; the new notes come in on beat 1 (see nextStep).
+    // finish; the new notes come in on beat 1 (see nextStep). A progression
+    // moves to its next chord there too, just ahead of the beat, so the pan
+    // shows the coming chord as it is heard.
     const tick = () => {
       const stepDur = 60 / state.tempo / 2;
       while (p.time < ctx.currentTime + 0.15) {
+        let loop = state.loop;
+        if (state.prog && (p.next === 0 || p.next >= p.steps.length)) {
+          const pos = nextChord(state.prog, state.loop);
+          // Without loop, carry on until the last chord has had its run.
+          if (pos >= 0) { loop = true; if (state.selIndex !== state.prog.chords[pos]) goToChord(pos, false); else paint(); }
+          if (state.playing !== p) return;
+        }
         const current = currentPattern();
         if (!current) { stopPlayback(); return; }
-        const i = nextStep(p, current.parsed, state.loop);
+        const i = nextStep(p, current.parsed, loop);
         if (i < 0) {
-          p.timers.push(at(p.time + 0.3, () => stopPlayback()));
+          p.timers.push(at(p.time + 0.3, () => {
+            stopPlayback();
+            // Back to the first chord, ready to play the progression again.
+            if (state.prog) goToChord(0, true);
+          }));
           clearInterval(p.interval);
           return;
         }
@@ -704,15 +812,17 @@
           const shown = currentPattern();
           const live = !!shown && shown.parsed === steps;
           $('pat-steps').querySelectorAll('.step').forEach((c, j) => c.classList.toggle('now', live && j === i));
+          const bar = live && $('prog-bars').querySelector('[aria-current="true"]');
+          if (bar) bar.style.setProperty('--p', (i + 1) / steps.length);
           if (s.notes) s.notes.forEach(flash);
         }));
         if (p.timers.length > 64) p.timers.splice(0, 32);
         p.time += stepDur;
       }
     };
+    state.playing = p;
     p.interval = setInterval(tick, 25);
     tick();
-    state.playing = p;
     updatePlayButtons();
   }
 
@@ -721,6 +831,8 @@
     const def = TUNINGS.find((t) => t.id === id) || TUNINGS[0];
     state.tuning = buildTuning(def);
     state.selIndex = 0;
+    state.prog = null;
+    state.lastProg = 0;
     $('tuning-select').value = def.id;
     save('tuning', def.id);
     if (push && location.hash !== '#' + def.id) history.replaceState(null, '', '#' + def.id);
@@ -752,24 +864,34 @@
     select.addEventListener('change', () => setTuning(select.value, true));
 
     // Tuning details live in a pop-up under the title.
-    const info = $('tuning-info');
-    const infoBtn = $('btn-tuning-info');
-    const showInfo = (open) => { info.hidden = !open; infoBtn.setAttribute('aria-expanded', String(open)); };
-    infoBtn.addEventListener('click', (e) => { e.stopPropagation(); showInfo(info.hidden); });
-    document.addEventListener('click', (e) => { if (!info.hidden && !info.contains(e.target)) showInfo(false); });
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !info.hidden) { showInfo(false); infoBtn.focus(); } });
+    // The tuning's info pop-up opens under its title; a click elsewhere or
+    // Escape closes it.
+    const pops = [...document.querySelectorAll('.info-title')].map((btn) => ({ btn, pop: $(btn.getAttribute('aria-controls')) }));
+    const showPop = ({ btn, pop }, open) => { pop.hidden = !open; btn.setAttribute('aria-expanded', String(open)); };
+    pops.forEach((p) => p.btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const open = p.pop.hidden;
+      pops.forEach((q) => showPop(q, false));
+      showPop(p, open);
+    }));
+    document.addEventListener('click', (e) => pops.forEach((p) => { if (!p.pop.hidden && !p.pop.contains(e.target)) showPop(p, false); }));
+    document.addEventListener('keydown', (e) => {
+      const p = e.key === 'Escape' && pops.find((q) => !q.pop.hidden);
+      if (p) { showPop(p, false); p.btn.focus(); }
+    });
     $('btn-mirror').addEventListener('click', () => { state.mirrored = !state.mirrored; save('mirrored', state.mirrored); layout(); });
     $('btn-play-pat').addEventListener('click', () => playPattern());
     document.querySelectorAll('#level-seg button').forEach((b) => b.addEventListener('click', () => {
-      stopPlayback();
+      // Like a chord change, a new level's pattern comes in on beat 1.
       state.level = b.dataset.level;
       save('level', state.level);
       fillPatternSelect();
       paint();
     }));
-    $('pat-select').addEventListener('change', (e) => { stopPlayback(); state.patName = e.target.value; paint(); });
-    $('btn-fab').addEventListener('click', () => playPattern());
+    $('pat-select').addEventListener('change', (e) => { state.patName = e.target.value; paint(); });
     $('btn-random').addEventListener('click', randomize);
+    document.querySelectorAll('#mode-seg button').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
+    $('prog-select').addEventListener('change', (e) => pickProgression(Number(e.target.value)));
 
     const tempo = $('input-tempo');
     tempo.value = state.tempo;
@@ -804,14 +926,26 @@
 
     document.addEventListener('keydown', (e) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
-      const tag = e.target.tagName;
+      const t = e.target;
+      const tag = t.tagName;
+      // Space plays and pauses, unless the keyboard is working a control:
+      // a select, a field on the pan, or a button or checkbox reached with
+      // Tab. One that was just clicked with the mouse doesn't count.
+      if (e.key === ' ') {
+        const typing = tag === 'SELECT' || tag === 'TEXTAREA' || (tag === 'INPUT' && t.type !== 'range' && t.type !== 'checkbox');
+        const tabbedTo = (tag === 'BUTTON' || tag === 'INPUT') && t.matches(':focus-visible');
+        if (typing || tabbedTo || t.closest('.field')) return;
+        e.preventDefault();
+        if (!e.repeat) playPattern();
+        return;
+      }
       if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
       const T = state.tuning;
       let note = null;
-      if (e.key === ' ' && tag !== 'BUTTON' && !e.target.closest('.field')) note = T.notes[0];
+      if (e.key === 'd' || e.key === 'D') note = T.notes[0];
       else if (/^[0-9]$/.test(e.key)) note = T.notes.find((o) => o.dispNum === String(e.key === '0' ? 10 : Number(e.key)));
-      if (note) { e.preventDefault(); if (e.repeat) return; stopPlayback(); strike(note.midi); flash(note); return; }
-      if (e.key === 't' || e.key === 'T') { if (!e.repeat) { stopPlayback(); tak(); } return; }
+      if (note) { e.preventDefault(); if (e.repeat) return; strike(note.midi); flash(note); return; }
+      if (e.key === 't' || e.key === 'T') { if (!e.repeat) tak(); return; }
       if (e.key === 'p' || e.key === 'P') playPattern();
     });
 

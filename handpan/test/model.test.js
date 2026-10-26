@@ -60,7 +60,7 @@ test('degreesFor: B Hijaz scale numbers top and bottom by pitch, skipping notes 
 
 test('degreesFor: a chord numbers its notes anywhere on the pan', () => {
   const T = tuning('b-hijaz');
-  const eMinor = T.selections.find((s) => s.name === 'E minor');
+  const eMinor = T.selections.find((s) => s.name === 'Em');
   assert.deepEqual(names(M.degreesFor(eMinor, T)), ['G3', 'B3', 'E4', 'G4', 'B4', 'E5']);
 });
 
@@ -76,6 +76,12 @@ test('parsePattern: ranges up, down and from the top', () => {
   assert.equal(played(M.parsePattern('1..3', T.notes, deg, false)), 'A3 Bb3 C4');
   assert.equal(played(M.parsePattern('N..N-2', T.notes, deg, false)), 'A4 F4 E4');
   assert.equal(played(M.parsePattern('N-1..2', T.notes, deg, false)), 'F4 E4 D4 C4 Bb3');
+});
+
+test('parsePattern: N and N-1 on their own', () => {
+  const T = tuning('d-integral');
+  const deg = M.degreesFor(T.selections[0], T);
+  assert.equal(played(M.parsePattern('1 N N-1', T.notes, deg, false)), 'A3 A4 F4');
 });
 
 test('parsePattern: simultaneous strikes and fixed note names', () => {
@@ -118,6 +124,69 @@ test('patternsFor: own patterns only on the scale, shared ones everywhere they f
   assert.ok(onChord.includes('Up and back'));
 });
 
+test('progressions: generic ones take the tuning\'s own chords on each root', () => {
+  const T = tuning('d-kurd-9');
+  const chordNames = (name) => T.progressions.find((p) => p.name === name).chords.map((i) => T.selections[i].name);
+  assert.deepEqual(chordNames('Two-step'), ['Dm', 'C']);
+  assert.deepEqual(chordNames('Andalusian'), ['Dm', 'C', 'Bb', 'Am']);
+  assert.ok(!T.progressions.some((p) => p.name === 'Pop'), 'D Kurd has no chord on its sixth');
+});
+
+test('progressions: a tuning\'s own come first, and duplicates are dropped', () => {
+  const T = tuning('b-hijaz');
+  assert.equal(T.progressions[0].name, 'Hijaz cadence');
+  const keys = T.progressions.map((p) => p.chords.join(' '));
+  assert.equal(new Set(keys).size, keys.length);
+});
+
+test('patternsFor: within a progression, only patterns that fit every chord', () => {
+  const T = tuning('d-kurd-9');
+  // Chords wrap numbers around; the scale does not, so 20 only fits chords.
+  const shared = [
+    { name: 'Anywhere', level: 'Beginner', steps: 'D 1 2 3' },
+    { name: 'High', level: 'Beginner', steps: 'D 1 20' },
+  ];
+  const dm = T.selections.findIndex((s) => s.name === 'Dm');
+  assert.equal(M.patternsFor(T, dm, shared).patterns.length, 2);
+  assert.deepEqual(M.patternsFor(T, dm, shared, [dm, 0]).patterns.map((p) => p.name), ['Anywhere']);
+});
+
+test('usesChordNotes: numbers and N count, the ding, taks and fixed notes do not', () => {
+  const uses = (steps) => M.usesChordNotes({ steps });
+  assert.equal(uses('D . T . D D T .'), false);
+  assert.equal(uses('D A3 . T'), false);
+  assert.equal(uses('D 1 2 3'), true);
+  assert.equal(uses('D+3 . .'), true);
+  assert.equal(uses('D N..1'), true);
+});
+
+test('patternsFor: a progression leaves out patterns that sound the same on every chord', () => {
+  const T = tuning('d-kurd-9');
+  const { chords } = T.progressions[0];
+  const shared = PATTERNS.concat({ name: 'Ding only', level: 'Beginner', steps: 'D . T . D D T .' });
+  const names = M.patternsFor(T, chords[0], shared, chords).patterns.map((p) => p.name);
+  assert.ok(!names.includes('Ding only'));
+  assert.ok(names.includes('Ding and walk'));
+});
+
+test('nextChord: starts on the picked chord, then one chord per run, looping', () => {
+  const prog = { chords: [3, 5, 7], pos: 0, fresh: true };
+  const order = [];
+  for (let k = 0; k < 5; k++) order.push(M.nextChord(prog, true));
+  assert.deepEqual(order, [0, 1, 2, 0, 1]);
+});
+
+test('nextChord: without loop, ends after the last chord', () => {
+  const prog = { chords: [3, 5], pos: 0, fresh: true };
+  assert.deepEqual([0, 1, 2].map(() => M.nextChord(prog, false)), [0, 1, -1]);
+});
+
+test('nextChord: a jump mid-run plays the chosen chord next', () => {
+  const prog = { chords: [3, 5, 7, 9], pos: 0, fresh: false };
+  Object.assign(prog, { pos: 2, fresh: true });
+  assert.deepEqual([0, 1].map(() => M.nextChord(prog, true)), [2, 3]);
+});
+
 // ---- data checks on tunings.js ----
 
 for (const def of TUNINGS) {
@@ -126,6 +195,12 @@ for (const def of TUNINGS) {
     const top = T.notes.filter((o) => o.side === 'top' && !o.isDing).map((o) => o.midi);
     assert.deepEqual(top, [...top].sort((a, b) => a - b));
     assert.equal(new Set(T.notes.map((o) => o.name)).size, T.notes.length, 'duplicate note');
+  });
+
+  test(`${def.name}: its own progressions resolve and every progression uses its chords`, () => {
+    const T = M.buildTuning(def);
+    for (const p of def.progressions || []) assert.ok(T.progressions.some((q) => q.name === p.name), `"${p.name}" names a chord this tuning does not have`);
+    for (const p of T.progressions) assert.ok(p.chords.every((i) => T.selections[i] && !T.selections[i].scale), p.name);
   });
 
   test(`${def.name}: every selection has notes on the pan`, () => {
@@ -149,7 +224,55 @@ for (const def of TUNINGS) {
 test('shared patterns all fit the most common tuning', () => {
   const T = tuning('d-kurd-9');
   const fit = new Set(M.patternsFor(T, 0, PATTERNS).patterns.map((p) => p.name));
-  for (const p of PATTERNS) assert.ok(fit.has(p.name), p.name);
+  for (const p of PATTERNS.filter((q) => !q.arpeggio)) assert.ok(fit.has(p.name), p.name);
+});
+
+test('arpeggios: offered over chords and progressions, not over the scale', () => {
+  const T = tuning('d-kurd-9');
+  const arps = PATTERNS.filter((p) => p.arpeggio).map((p) => p.name);
+  assert.ok(arps.length >= 6);
+  const onScale = M.patternsFor(T, 0, PATTERNS).patterns.map((p) => p.name);
+  const dm = T.selections.findIndex((s) => s.name === 'Dm');
+  const onChord = M.patternsFor(T, dm, PATTERNS).patterns.map((p) => p.name);
+  const { chords } = T.progressions[0];
+  const inProg = M.patternsFor(T, chords[0], PATTERNS, chords).patterns.map((p) => p.name);
+  for (const a of arps) {
+    assert.ok(!onScale.includes(a), a);
+    assert.ok(onChord.includes(a), a);
+    assert.ok(inProg.includes(a), a);
+  }
+});
+
+test('arpeggios: Arpeggio up plays every chord note on the pan, top and bottom', () => {
+  const T = tuning('b-hijaz');
+  const am = T.selections.findIndex((s) => s.name === 'Am');
+  const up = M.patternsFor(T, am, PATTERNS).patterns.find((p) => p.name === 'Arpeggio up');
+  assert.equal(played(up.parsed), 'A3 C4 E4 A4 E5 . . .');
+});
+
+test('arpeggios never strike the same note twice in a row, on any chord', () => {
+  for (const def of TUNINGS) {
+    const T = M.buildTuning(def);
+    T.selections.forEach((sel, i) => {
+      if (sel.scale) return;
+      for (const p of M.patternsFor(T, i, PATTERNS).patterns.filter((q) => q.arpeggio)) {
+        const notes = p.parsed.filter((s) => s.kind === 'notes').map((s) => s.notes.map((o) => o.name).join('+'));
+        notes.forEach((n, k) => assert.ok(k === 0 || n !== notes[k - 1], `${def.name} ${sel.name} ${p.name}: ${n} twice`));
+      }
+    });
+  }
+});
+
+test('arpeggios play only chord notes', () => {
+  const T = tuning('d-kurd-9');
+  const dm = T.selections.findIndex((s) => s.name === 'Dm');
+  const { patterns } = M.patternsFor(T, dm, PATTERNS);
+  const dmPcs = T.selections[dm].pcs;
+  for (const p of patterns.filter((q) => q.arpeggio)) {
+    for (const s of p.parsed.filter((x) => x.kind === 'notes')) {
+      for (const o of s.notes) assert.ok(dmPcs.includes(M.pc(o.midi)), `${p.name}: ${o.name}`);
+    }
+  }
 });
 
 test('B Hijaz own patterns play the same notes as before pitch-order numbering', () => {
@@ -157,13 +280,38 @@ test('B Hijaz own patterns play the same notes as before pitch-order numbering',
   const { patterns } = M.patternsFor(T, 0, PATTERNS);
   const get = (name) => played(patterns.find((p) => p.name === name).parsed);
   assert.equal(get('Snake charmer'), 'B2 B3 C4 B3 D#4 C4 B3 . B3 C4 E4 D#4 C4 B3 C4 .');
-  assert.equal(get('Waterfall'), 'E5 Eb5 B4 A4 G4 F#4 E4 D#4 C4 B3 B2 . . .');
+  assert.equal(get('Waterfall'), 'E5 Eb5 B4 A4 G4 F#4 E4 D#4 C4 B3 B2 . . . . .');
 });
 
 // ---- playback position ----
 
 // Like the player: advance first, then read the (possibly swapped) steps.
 const advance = (play, latest, loop) => { const i = M.nextStep(play, latest, loop); return play.steps[i]; };
+
+test('patternsFor: every run is a whole number of beat pairs', () => {
+  for (const def of TUNINGS) {
+    const T = M.buildTuning(def);
+    T.selections.forEach((sel, i) => {
+      for (const p of M.patternsFor(T, i, PATTERNS).patterns) assert.equal(p.parsed.length % 4, 0, `${def.name} ${sel.name} ${p.name}: ${p.parsed.length} steps`);
+    });
+  }
+});
+
+test('patternsFor: in a progression every chord gets a run of the same length', () => {
+  const T = tuning('b-hijaz');
+  const prog = T.progressions.find((p) => p.name === 'Hijaz cadence');
+  const lengths = (name) => prog.chords.map((i) => M.patternsFor(T, i, PATTERNS, prog.chords).patterns.find((p) => p.name === name).parsed.length);
+  for (const name of ['Full ascent', 'Arpeggio up', 'Arpeggio up and down']) {
+    const ls = lengths(name);
+    assert.equal(new Set(ls).size, 1, `${name}: ${ls}`);
+  }
+  // Full ascent on B alone: ding, seven chord notes and three rests is 11
+  // steps, padded to 12. In the progression B7 has nine notes (13 steps,
+  // padded to 16), so every chord gets 16.
+  const b = T.selections.findIndex((s) => s.name === 'B');
+  assert.equal(M.patternsFor(T, b, PATTERNS).patterns.find((p) => p.name === 'Full ascent').parsed.length, 12);
+  assert.equal(lengths('Full ascent')[0], 16);
+});
 
 test('nextStep: plays through and loops back to beat 1', () => {
   const steps = ['a', 'b', 'c'];

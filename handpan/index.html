@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#121317">
+  <meta name="theme-color" content="#101011">
   <meta name="description" content="A playable handpan in your browser: pitch-sized tone fields, multiple tunings, scales, chords and guided playing patterns.">
   <title>Handpan</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
@@ -16,10 +16,8 @@
 <body>
 
   <header class="site-header">
-    <div class="brand">
-      <h1>Handpan</h1>
-    </div>
-    <div class="header-controls">
+    <div class="bar-inner">
+      <p class="wordmark"><img src="favicon.svg" alt="" width="28" height="28">Handpan</p>
       <label class="tuning-picker">
         <span class="field-label">Tuning</span>
         <select id="tuning-select" class="select" aria-label="Handpan tuning"></select>
@@ -29,59 +27,49 @@
 
   <main>
 
+    <div class="workspace">
     <section class="panel" aria-label="Practice">
-      <div class="panel-step random-step">
-        <button id="btn-random" class="secondary-btn">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3.5"/><circle cx="9" cy="9" r="1.2"/><circle cx="15" cy="15" r="1.2"/><circle cx="15" cy="9" r="1.2"/><circle cx="9" cy="15" r="1.2"/><circle cx="12" cy="12" r="1.2"/></svg>
-          Random combination
-        </button>
-      </div>
-
       <div class="panel-step">
-        <p class="field-label">1 · Play over</p>
-        <div id="sel-chips" class="chips"></div>
+        <h2 class="step-title">Play over</h2>
+        <div id="mode-seg" class="segmented" role="radiogroup" aria-label="Play over">
+          <button role="radio" data-mode="single" aria-checked="true">Scale or chord</button>
+          <button role="radio" data-mode="prog" aria-checked="false">Progression</button>
+        </div>
+        <div id="single-pick">
+          <div id="sel-chips" class="chips"></div>
+        </div>
+        <div id="prog-pick" hidden>
+          <select id="prog-select" class="select" aria-label="Chord progression"></select>
+          <p id="prog-hint" class="hint"></p>
+          <p class="field-label sub-label">Chords, tap one to jump to it</p>
+          <ol id="prog-bars" class="prog-bars" aria-label="Chords in this progression"></ol>
+        </div>
         <p id="sel-desc" class="desc"></p>
       </div>
 
       <div class="panel-step">
-        <p class="field-label">2 · Level</p>
+        <h2 class="step-title">Pattern</h2>
         <div id="level-seg" class="segmented" role="radiogroup" aria-label="Level">
           <button role="radio" data-level="Beginner" aria-checked="true">Beginner</button>
           <button role="radio" data-level="Intermediate" aria-checked="false">Intermediate</button>
           <button role="radio" data-level="Advanced" aria-checked="false">Advanced</button>
-          <button role="radio" data-level="Double" aria-checked="false" title="Patterns that use both the top and the bottom">Double</button>
+          <button role="radio" data-level="Double" aria-checked="false" title="Patterns that use both the top and the bottom">Both sides</button>
         </div>
-      </div>
-
-      <div class="panel-step">
-        <p class="field-label">3 · Pattern</p>
         <select id="pat-select" class="select" aria-label="Playing pattern"></select>
         <p id="pat-desc" class="desc"></p>
         <ol id="pat-steps" class="steps" aria-label="Pattern steps"></ol>
-        <div class="transport">
-          <button id="btn-play-pat" class="primary-btn play-btn" aria-label="Play"></button>
-          <label class="tempo">
-            <span class="field-label">Tempo</span>
-            <input id="input-tempo" type="range" min="50" max="160" value="88">
-            <output id="out-tempo">88</output>
-          </label>
-          <label class="check">
-            <input id="input-loop" type="checkbox" checked>
-            <span>Loop</span>
-          </label>
-        </div>
       </div>
     </section>
 
     <section class="instrument" aria-labelledby="tuning-name">
       <div class="tuning-head">
-        <h2>
-          <button id="btn-tuning-info" class="tuning-title" aria-expanded="false" aria-controls="tuning-info">
+        <h1>
+          <button id="btn-tuning-info" class="info-title" aria-expanded="false" aria-controls="tuning-info">
             <span id="tuning-name"></span>
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.6v.1"/></svg>
           </button>
-        </h2>
-        <div id="tuning-info" class="tuning-info" role="dialog" aria-label="About this tuning" hidden>
+        </h1>
+        <div id="tuning-info" class="info-pop" role="dialog" aria-label="About this tuning" hidden>
           <p id="tuning-notes" class="tuning-notes"></p>
           <p id="tuning-mood" class="tuning-mood"></p>
         </div>
@@ -102,11 +90,13 @@
       </div>
 
       <div class="legend">
-        <span><i class="dot dot-root"></i>Root / home</span>
-        <span><i class="dot dot-sel"></i>In selection</span>
+        <span><i class="dot dot-root"></i><span id="legend-root">Home</span></span>
+        <span><i class="dot dot-sel"></i><span id="legend-sel">In scale</span></span>
         <span><i class="dot dot-shell"></i>Tap the shell for a tak</span>
       </div>
     </section>
+
+    </div>
 
     <section class="guide" aria-labelledby="guide-title">
       <h2 id="guide-title">How to read the patterns</h2>
@@ -124,8 +114,12 @@
           <p><b>T</b> is a tak: a light tap on the shell between notes for a percussive click. A dot is a rest. Count the steps as eighth notes.</p>
         </article>
         <article>
+          <h3>Progressions</h3>
+          <p>A progression plays the pattern once over each chord in turn, then starts again. The numbers follow the chord, so the same pattern moves with the harmony. A switch comes in on beat 1.</p>
+        </article>
+        <article>
           <h3>Keyboard</h3>
-          <p><kbd>Space</kbd> ding, <kbd>1</kbd>–<kbd>9</kbd> and <kbd>0</kbd> the numbered notes, <kbd>T</kbd> tak, <kbd>P</kbd> play/stop the current pattern.</p>
+          <p><kbd>Space</kbd> or <kbd>P</kbd> play and stop the pattern, <kbd>D</kbd> ding, <kbd>1</kbd>–<kbd>9</kbd> and <kbd>0</kbd> the numbered notes, <kbd>T</kbd> tak. You can play along while a pattern runs.</p>
         </article>
       </div>
     </section>
@@ -145,7 +139,23 @@
     <p>Sounds are synthesized in the browser. Tunings show common layouts; real instruments vary by maker.</p>
   </footer>
 
-  <button id="btn-fab" class="fab" aria-label="Play"></button>
+  <div class="transport" role="region" aria-label="Player">
+    <button id="btn-play-pat" class="play-btn" aria-label="Play"></button>
+    <p class="now" aria-live="polite"><strong id="now-pat"></strong><span id="now-over"></span></p>
+    <label class="tempo">
+      <span class="field-label">Tempo</span>
+      <input id="input-tempo" type="range" min="50" max="160" value="88">
+      <output id="out-tempo">88</output>
+    </label>
+    <label class="check">
+      <input id="input-loop" type="checkbox" checked>
+      <span>Loop</span>
+    </label>
+    <button id="btn-random" class="ghost-btn" title="Pick a random scale, chord or progression and a pattern">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3.5"/><circle cx="9" cy="9" r="1.2"/><circle cx="15" cy="15" r="1.2"/><circle cx="15" cy="9" r="1.2"/><circle cx="9" cy="15" r="1.2"/><circle cx="12" cy="12" r="1.2"/></svg>
+      <span>Random</span>
+    </button>
+  </div>
 
   <script src="tunings.js"></script>
   <script src="model.js"></script>
