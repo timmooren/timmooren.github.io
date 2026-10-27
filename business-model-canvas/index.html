@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Business Model Canvas</title>
+  <meta name="description" content="An interactive explainer of the nine building blocks of the Business Model Canvas, with a worked example and a canvas to fill in yourself.">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Text marked with data-i18n is filled in from STRINGS in script.js, in English or Dutch -->
+  <header class="top">
+    <h1>Business Model Canvas</h1>
+    <div class="top-actions">
+    <button type="button" class="info-button" popovertarget="credits" data-i18n-aria="about">i</button>
+    <div class="info-popover" id="credits" popover>
+      <p data-i18n="credits"></p>
+    </div>
+    <div class="langs" role="group" data-i18n-aria="language">
+      <button type="button" class="lang-toggle" data-lang-button="en" aria-label="English" lang="en">EN</button>
+      <button type="button" class="lang-toggle" data-lang-button="nl" aria-label="Nederlands" lang="nl">NL</button>
+    </div>
+    <div class="views" role="group" data-i18n-aria="view">
+      <button type="button" class="view-toggle" data-view-button="explain" aria-pressed="true" data-i18n="explain"></button>
+      <button type="button" class="view-toggle" data-view-button="create" aria-pressed="false" data-i18n="create"></button>
+    </div>
+    </div>
+  </header>
+
+  <div class="view" id="view-explain">
+  <main class="explorer" id="explorer">
+    <p class="lede" data-i18n="lede"></p>
+    <div class="lenses" role="group" data-i18n-aria="highlight">
+      <button type="button" class="lens" data-lens-button="" data-i18n="allBlocks"></button>
+      <button type="button" class="lens" data-lens-button="desire"><span class="swatch desire"></span><span data-i18n="desire"></span></button>
+      <button type="button" class="lens" data-lens-button="feas"><span class="swatch feas"></span><span data-i18n="feas"></span></button>
+      <button type="button" class="lens" data-lens-button="viab"><span class="swatch viab"></span><span data-i18n="viab"></span></button>
+      <button type="button" class="lens" data-lens-button="flow" data-i18n="story"></button>
+    </div>
+    <div class="explorer-grid">
+      <div class="bmc is-loading" id="explore-canvas"></div>
+      <aside class="panel" id="panel" aria-live="polite"></aside>
+    </div>
+  </main>
+  </div>
+
+  <div class="view" id="view-create" hidden>
+  <section class="workshop wrap" id="workshop">
+    <div class="workshop-bar">
+      <div class="lenses" role="group" data-i18n-aria="highlight">
+        <button type="button" class="lens" data-workshop-lens="" aria-pressed="true" data-i18n="allBlocks"></button>
+        <button type="button" class="lens" data-workshop-lens="desire" aria-pressed="false"><span class="swatch desire"></span><span data-i18n="desire"></span></button>
+        <button type="button" class="lens" data-workshop-lens="feas" aria-pressed="false"><span class="swatch feas"></span><span data-i18n="feas"></span></button>
+        <button type="button" class="lens" data-workshop-lens="viab" aria-pressed="false"><span class="swatch viab"></span><span data-i18n="viab"></span></button>
+      </div>
+      <div class="workshop-actions">
+        <button class="button ghost" type="button" id="load-example" data-i18n="loadExample"></button>
+        <button class="button ghost" type="button" id="clear-canvas" data-i18n="clear"></button>
+        <button class="button" type="button" id="print-canvas" data-i18n="print"></button>
+      </div>
+    </div>
+    <div class="explorer-grid">
+      <div class="bmc editable" id="workshop-canvas"></div>
+      <aside class="panel" id="workshop-panel" aria-live="polite"></aside>
+    </div>
+  </section>
+
+  <section class="tips wrap">
+    <h2 data-i18n="tipsTitle"></h2>
+    <ol class="tip-list" id="tip-list"></ol>
+  </section>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
