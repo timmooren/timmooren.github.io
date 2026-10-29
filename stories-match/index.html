@@ -104,6 +104,7 @@
     display: block; width: 100%; height: 100%;
     object-fit: cover; pointer-events: none;
   }
+  .grid.loading .tile { pointer-events: none; opacity: .5; }
   .tile:hover { outline-color: #777; }
   .tile:focus-visible { outline-color: #fff; }
   .tile.selected { outline-color: var(--rood); transform: scale(1.03); }
@@ -216,7 +217,7 @@
   
 
   let roundIdx = 0, selected = null, found = 0, mistakes = 0;
-  let startedAt = 0, timer = null;
+  let startedAt = 0, timer = null, roundToken = 0;
   let tiles = [];
   const history = [];
 
@@ -275,12 +276,23 @@
       const hls = new Hls({ startPosition: offset, capLevelToPlayerSize: true, startLevel: 0, maxBufferLength: 15 });
       hls.loadSource(v.stream);
       hls.attachMedia(video);
-      hls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => {}));
       return hls;
     }
     video.src = v.stream && video.canPlayType('application/vnd.apple.mpegurl') ? v.stream : v.file;
     video.addEventListener('loadedmetadata', () => { if (offset) video.currentTime = offset; }, { once: true });
     return null;
+  }
+
+  // Resolves once the video has enough data at its start position to play.
+  function ready(video) {
+    return new Promise((resolve) => {
+      const check = () => {
+        if (video.readyState >= 3 && !video.seeking) { video.removeEventListener('canplay', check); video.removeEventListener('seeked', check); resolve(); }
+      };
+      video.addEventListener('canplay', check);
+      video.addEventListener('seeked', check);
+      check();
+    });
   }
 
   function startRound() {
@@ -317,10 +329,22 @@
     show('game');
     layout();
     applyVolumes();
-    tiles.forEach((t) => t.video.play().catch(() => {}));
-    startedAt = performance.now();
     clearInterval(timer);
-    timer = setInterval(() => { $('clock').textContent = fmt(performance.now() - startedAt); }, 250);
+    $('clock').textContent = 'laden…';
+    grid.classList.add('loading');
+
+    // Buffer all streams first, then start them in the same tick. A stream that hangs
+    // doesn't hold up the round for more than 10 s; it joins as soon as it can.
+    const token = ++roundToken;
+    const timeout = new Promise((r) => setTimeout(r, 10000));
+    Promise.race([Promise.all(tiles.map((t) => ready(t.video))), timeout]).then(() => {
+      if (token !== roundToken) return;
+      tiles.forEach((t) => t.video.play().catch(() => {}));
+      grid.classList.remove('loading');
+      startedAt = performance.now();
+      $('clock').textContent = '0:00';
+      timer = setInterval(() => { $('clock').textContent = fmt(performance.now() - startedAt); }, 250);
+    });
   }
 
   function pick(t) {
