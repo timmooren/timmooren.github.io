@@ -90,7 +90,21 @@
     padding: 0 16px 16px;
     min-height: 0;
   }
+  #wall { position: relative; }
   .grid { display: grid; gap: 12px; }
+  .spinner {
+    position: absolute; top: 50%; left: 50%;
+    width: 56px; height: 56px; margin: -36px 0 0 -28px;
+    border: 5px solid rgba(255,255,255,.25);
+    border-top-color: var(--rood);
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+    display: none;
+    pointer-events: none;
+  }
+  #wall.loading .spinner { display: block; }
+  @keyframes spin { to { rotate: 360deg; } }
+  @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }
   .tile {
     position: relative;
     padding: 0; border: 0;
@@ -184,7 +198,7 @@
     <span class="stat">Fouten <b id="mistakes">0</b></span>
     <span class="stat">Tijd <b id="clock">0:00</b></span>
   </header>
-  <div id="wall"><div class="grid" id="grid" role="group" aria-label="Video's"></div></div>
+  <div id="wall"><div class="grid" id="grid" role="group" aria-label="Video's"></div><div class="spinner" role="status" aria-label="Video's laden"></div></div>
 </section>
 
 <div id="result" role="dialog" aria-modal="true" aria-labelledby="result-title">
@@ -329,6 +343,7 @@
     clearInterval(timer);
     $('clock').textContent = 'laden…';
     grid.classList.add('loading');
+    $('wall').classList.add('loading');
 
     // Buffer all streams first, then start them in the same tick. A stream that hangs
     // doesn't hold up the round for more than 10 s; it joins as soon as it can.
@@ -338,6 +353,7 @@
       if (token !== roundToken) return;
       tiles.forEach((t) => t.video.play().catch(() => {}));
       grid.classList.remove('loading');
+      $('wall').classList.remove('loading');
       startedAt = performance.now();
       $('clock').textContent = '0:00';
       timer = setInterval(() => { $('clock').textContent = fmt(performance.now() - startedAt); }, 250);
