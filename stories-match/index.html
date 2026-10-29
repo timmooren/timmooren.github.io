@@ -63,6 +63,8 @@
     padding: 32px;
   }
   .card h1 { font-size: 36px; line-height: 1.1; margin-bottom: 16px; }
+  #intro .card { text-align: center; }
+  #intro .actions { justify-content: center; }
   .card h1 .dot { color: var(--rood); }
   .card p { line-height: 1.5; color: var(--warmgrijs); margin: 0 0 12px; }
   .card ul { padding-left: 20px; margin: 0 0 24px; line-height: 1.6; color: var(--warmgrijs); }
@@ -166,14 +168,9 @@
 <section id="intro" class="screen active" aria-labelledby="intro-title">
   <div class="card">
     <h1 id="intro-title">Wat hoort bij elkaar<span class="dot">?</span></h1>
-    <p>Twaalf NOS-video's spelen tegelijk, allemaal met geluid. Steeds twee ervan gaan over hetzelfde nieuws. Vind de zes paren.</p>
-    <ul>
-      <li>Klik een video aan, en dan de video die erbij hoort.</li>
-      <li>Hoe sneller en met hoe minder fouten, hoe beter.</li>
-    </ul>
     <p id="load-msg" class="error" hidden></p>
     <div class="actions">
-      <button id="start" class="btn">Start met geluid</button>
+      <button id="start" class="btn">Start</button>
     </div>
   </div>
 </section>
