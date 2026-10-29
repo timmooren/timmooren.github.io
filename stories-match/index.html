@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wat hoort bij elkaar?</title>
+<style>
+  @font-face {
+    font-family: 'Effra-Bold';
+    font-display: swap;
+    src: url('https://static.nos.nl/fonts/effra/EffraBold.woff2') format('woff2'),
+         url('https://static.nos.nl/fonts/effra/EffraBold.woff') format('woff');
+  }
+  :root {
+    --rood: #e61e14;
+    --rood-donker: #a1150e;
+    --rood-licht: #f5a5a1;
+    --bg: #202020;
+    --surface: #2c2c2c;
+    --text: #ffffff;
+    --text-muted: #b5b0b0;
+    --warmgrijs: #ede9e9;
+    --heading: 'Effra-Bold', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    --body: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--body);
+    overflow: hidden;
+  }
+  h1, h2, h3 { font-family: var(--heading); font-weight: 700; margin: 0; }
+  button { font: inherit; color: inherit; }
+
+  .btn {
+    background: var(--rood);
+    color: #fff;
+    border: 0;
+    border-radius: 999px;
+    padding: 12px 28px;
+    font-family: var(--heading);
+    font-size: 18px;
+    cursor: pointer;
+  }
+  .btn:hover { background: var(--rood-donker); }
+  .btn:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+  .btn.secondary { background: transparent; border: 2px solid var(--text-muted); }
+  .btn.secondary:hover { border-color: #fff; }
+
+  /* ---------- screens ---------- */
+  .screen { position: fixed; inset: 0; display: none; }
+  .screen.active { display: flex; }
+
+  #intro, #end {
+    align-items: center; justify-content: center; padding: 16px;
+  }
+  .card {
+    max-width: 560px; width: 100%;
+    background: var(--surface);
+    border-radius: 4px;
+    padding: 32px;
+  }
+  .card h1 { font-size: 36px; line-height: 1.1; margin-bottom: 16px; }
+  .card h1 .dot { color: var(--rood); }
+  .card p { line-height: 1.5; color: var(--warmgrijs); margin: 0 0 12px; }
+  .card ul { padding-left: 20px; margin: 0 0 24px; line-height: 1.6; color: var(--warmgrijs); }
+  .card .actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 24px; }
+  .error { color: var(--rood-licht); }
+
+  /* ---------- game ---------- */
+  #game { flex-direction: column; }
+  header {
+    display: flex; align-items: center; gap: 16px;
+    padding: 12px 16px;
+    min-height: 60px;
+  }
+  header h2 { font-size: 20px; white-space: nowrap; }
+  header .round-title { color: var(--text-muted); font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  header .spacer { flex: 1; }
+  .stat { font-size: 15px; color: var(--text-muted); white-space: nowrap; }
+  .stat b { color: #fff; font-family: var(--heading); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  #wall {
+    flex: 1;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0 16px 16px;
+    min-height: 0;
+  }
+  .grid { display: grid; gap: 12px; }
+  .tile {
+    position: relative;
+    padding: 0; border: 0;
+    background: #000;
+    border-radius: 4px;
+    overflow: hidden;
+    cursor: pointer;
+    outline: 4px solid transparent;
+    outline-offset: 0;
+    transition: outline-color .15s, transform .15s, opacity .3s;
+  }
+  .tile video {
+    display: block; width: 100%; height: 100%;
+    object-fit: cover; pointer-events: none;
+  }
+  .tile:hover { outline-color: #777; }
+  .tile:focus-visible { outline-color: #fff; }
+  .tile.selected { outline-color: var(--rood); transform: scale(1.03); }
+  .tile.matched { cursor: default; outline-color: transparent; }
+  .tile.matched video { opacity: .35; }
+  .tile.wrong { animation: shake .4s; outline-color: var(--rood-licht); }
+  @keyframes shake {
+    0%, 100% { translate: 0; }
+    20%, 60% { translate: -8px; }
+    40%, 80% { translate: 8px; }
+  }
+
+  .badge {
+    position: absolute; left: 8px; right: 8px; bottom: 8px;
+    background: var(--rood); color: #fff;
+    border-radius: 4px;
+    padding: 8px 10px;
+    font-family: var(--heading); font-size: 16px; line-height: 1.2;
+    text-align: left;
+    display: none;
+  }
+  .badge small { display: block; font-family: var(--body); font-size: 12px; opacity: .9; margin-top: 2px; }
+  .tile.matched .badge { display: block; }
+  .num {
+    position: absolute; top: 8px; left: 8px;
+    width: 28px; height: 28px; border-radius: 999px;
+    background: var(--rood); color: #fff;
+    font-family: var(--heading); font-size: 16px;
+    display: none; align-items: center; justify-content: center;
+  }
+  .tile.matched .num { display: flex; }
+
+  /* round result overlay */
+  #result {
+    position: fixed; inset: 0;
+    background: rgba(32,32,32,.92);
+    display: none; align-items: center; justify-content: center; padding: 16px;
+  }
+  #result.show { display: flex; }
+  #result .card h1 { font-size: 30px; }
+  .pairs { list-style: none; padding: 0 !important; }
+  .pairs li { padding: 10px 0; border-top: 1px solid #444; }
+  .pairs li b { font-family: var(--heading); color: #fff; }
+  .pairs li span { display: block; font-size: 14px; color: var(--text-muted); }
+
+  @media (max-width: 640px) {
+    header { flex-wrap: wrap; gap: 8px 12px; }
+    header .round-title { display: none; }
+    .card { padding: 24px; }
+    .card h1 { font-size: 28px; }
+    .grid { gap: 8px; }
+    .badge { font-size: 13px; padding: 6px; }
+    .badge small { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<section id="intro" class="screen active" aria-labelledby="intro-title">
+  <div class="card">
+    <h1 id="intro-title">Wat hoort bij elkaar<span class="dot">?</span></h1>
+    <p>Twaalf NOS-video's spelen tegelijk, allemaal met geluid. Steeds twee ervan gaan over hetzelfde nieuws. Vind de zes paren.</p>
+    <ul>
+      <li>Klik een video aan, en dan de video die erbij hoort.</li>
+      <li>Hoe sneller en met hoe minder fouten, hoe beter.</li>
+    </ul>
+    <p id="load-msg" class="error" hidden></p>
+    <div class="actions">
+      <button id="start" class="btn">Start met geluid</button>
+    </div>
+  </div>
+</section>
+
+<section id="game" class="screen" aria-label="Spel">
+  <header>
+    <h2 id="round-name">Ronde 1</h2>
+    <span class="round-title" id="round-title"></span>
+    <span class="spacer"></span>
+    <span class="stat">Paren <b id="found">0</b>/<span id="total">6</span></span>
+    <span class="stat">Fouten <b id="mistakes">0</b></span>
+    <span class="stat">Tijd <b id="clock">0:00</b></span>
+  </header>
+  <div id="wall"><div class="grid" id="grid" role="group" aria-label="Video's"></div></div>
+</section>
+
+<div id="result" role="dialog" aria-modal="true" aria-labelledby="result-title">
+  <div class="card">
+    <h1 id="result-title">Ronde klaar</h1>
+    <p id="result-stats"></p>
+    <ul class="pairs" id="result-pairs"></ul>
+    <div class="actions"><button id="next" class="btn">Volgende ronde</button></div>
+  </div>
+</div>
+
+<section id="end" class="screen" aria-labelledby="end-title">
+  <div class="card">
+    <h1 id="end-title">Klaar<span class="dot">.</span></h1>
+    <p id="end-stats"></p>
+    <ul class="pairs" id="end-rounds"></ul>
+    <div class="actions"><button id="again" class="btn">Opnieuw spelen</button></div>
+  </div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.20/dist/hls.min.js" integrity="sha384-V5ruNBgmYcC3SJRUQeNykAAAgde5gOFq/Hu0CZj7bygDP0yRIhkvX8+w0u/7mRvr" crossorigin="anonymous"></script>
+<script src="rounds.js"></script>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const data = window.ROUNDS;
+  
+
+  let roundIdx = 0, selected = null, found = 0, mistakes = 0;
+  let startedAt = 0, timer = null;
+  let tiles = [];
+  const history = [];
+
+  if (!data || !Array.isArray(data.rounds) || !data.rounds.length) {
+    const msg = $('load-msg');
+    msg.hidden = false;
+    msg.textContent = 'Geen rondes gevonden: rounds.js ontbreekt of is leeg.';
+    $('start').disabled = true;
+  }
+
+  const shuffle = (a) => {
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  };
+  const fmt = (ms) => {
+    const s = Math.floor(ms / 1000);
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  };
+  const show = (id) => {
+    document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('active', s.id === id));
+  };
+
+  // Pick the column count that gives the biggest 9:16 tiles in the available space.
+  function layout() {
+    const wall = $('wall'), grid = $('grid');
+    const cs = getComputedStyle(wall);
+    const W = wall.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    const H = wall.clientHeight - parseFloat(cs.paddingBottom);
+    const gap = parseFloat(getComputedStyle(grid).gap) || 12;
+    const n = Math.max(tiles.length, 1);
+    let best = { w: 0, cols: n };
+    for (let cols = 1; cols <= n; cols++) {
+      const rows = Math.ceil(n / cols);
+      const w = Math.min((W - gap * (cols - 1)) / cols, ((H - gap * (rows - 1)) / rows) * 9 / 16);
+      if (w > best.w) best = { w, cols };
+    }
+    grid.style.gridTemplateColumns = `repeat(${best.cols}, ${Math.floor(best.w)}px)`;
+    grid.style.gridAutoRows = `${Math.floor(best.w * 16 / 9)}px`;
+  }
+  window.addEventListener('resize', layout);
+
+  function applyVolumes() {
+    // Everything at full volume: the chaos is the game. Found pairs go quiet.
+    for (const t of tiles) t.video.volume = t.matched ? 0 : 1;
+  }
+
+  // Play the NOS HLS stream (hls.js, or native HLS in Safari); fall back to a local file.
+  // Each video starts a few seconds in, past the shared Stories intro, so the openings don't all sound the same.
+  function attach(video, v) {
+    const d = v.durationSec || 0;
+    const offset = d > 12 ? 2 + Math.random() * Math.min(10, d / 4) : 0;
+    if (v.stream && window.Hls && Hls.isSupported()) {
+      const hls = new Hls({ startPosition: offset, capLevelToPlayerSize: true, startLevel: 0, maxBufferLength: 15 });
+      hls.loadSource(v.stream);
+      hls.attachMedia(video);
+      hls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => {}));
+      return hls;
+    }
+    video.src = v.stream && video.canPlayType('application/vnd.apple.mpegurl') ? v.stream : v.file;
+    video.addEventListener('loadedmetadata', () => { if (offset) video.currentTime = offset; }, { once: true });
+    return null;
+  }
+
+  function startRound() {
+    const round = data.rounds[roundIdx];
+    found = 0; mistakes = 0; selected = null;
+    $('round-name').textContent = `Ronde ${roundIdx + 1} van ${data.rounds.length}`;
+    $('round-title').textContent = round.title || '';
+    $('found').textContent = '0';
+    $('total').textContent = round.pairs.length;
+    $('mistakes').textContent = '0';
+    $('clock').textContent = '0:00';
+
+    const grid = $('grid');
+    tiles.forEach((t) => {
+      if (t.hls) t.hls.destroy();
+      t.video.pause(); t.video.removeAttribute('src'); t.video.load();
+    });
+    grid.innerHTML = '';
+
+    const items = [];
+    round.pairs.forEach((pair, p) => pair.videos.forEach((v) => items.push({ pair, p, v })));
+    tiles = shuffle(items).map(({ pair, v }) => {
+      const el = document.createElement('button');
+      el.className = 'tile';
+      el.setAttribute('aria-label', 'Video, nog niet gekoppeld');
+      el.innerHTML = '<video playsinline loop preload="auto"></video><span class="num"></span><span class="badge"></span>';
+      const video = el.querySelector('video');
+      const t = { el, video, pair, v, matched: false, hls: attach(video, v) };
+      el.addEventListener('click', () => pick(t));
+      grid.appendChild(el);
+      return t;
+    });
+
+    show('game');
+    layout();
+    applyVolumes();
+    tiles.forEach((t) => t.video.play().catch(() => {}));
+    startedAt = performance.now();
+    clearInterval(timer);
+    timer = setInterval(() => { $('clock').textContent = fmt(performance.now() - startedAt); }, 250);
+  }
+
+  function pick(t) {
+    if (t.matched) return;
+    if (!selected) {
+      selected = t;
+      t.el.classList.add('selected');
+      return;
+    }
+    if (selected === t) {
+      t.el.classList.remove('selected');
+      selected = null;
+      return;
+    }
+    const a = selected, b = t;
+    a.el.classList.remove('selected');
+    selected = null;
+    if (a.pair === b.pair) {
+      found++;
+      $('found').textContent = found;
+      for (const x of [a, b]) {
+        x.matched = true;
+        x.el.classList.add('matched');
+        x.el.querySelector('.num').textContent = found;
+        x.el.querySelector('.badge').innerHTML = `${esc(x.pair.label)}<small>${esc(x.v.title || '')}</small>`;
+        x.el.setAttribute('aria-label', `Gekoppeld: ${x.pair.label}`);
+      }
+      applyVolumes();
+      if (found === data.rounds[roundIdx].pairs.length) setTimeout(endRound, 700);
+    } else {
+      mistakes++;
+      $('mistakes').textContent = mistakes;
+      for (const x of [a, b]) {
+        x.el.classList.remove('wrong');
+        void x.el.offsetWidth;
+        x.el.classList.add('wrong');
+        setTimeout(() => x.el.classList.remove('wrong'), 450);
+      }
+    }
+  }
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  function endRound() {
+    clearInterval(timer);
+    const ms = performance.now() - startedAt;
+    const round = data.rounds[roundIdx];
+    history.push({ title: round.title || `Ronde ${roundIdx + 1}`, ms, mistakes });
+    tiles.forEach((t) => { t.video.volume = 0.25; });
+    $('result-title').textContent = mistakes === 0 ? 'Foutloos!' : 'Ronde klaar';
+    $('result-stats').textContent = `${fmt(ms)} minuten, ${mistakes} ${mistakes === 1 ? 'fout' : 'fouten'}.`;
+    $('result-pairs').innerHTML = round.pairs.map((p) =>
+      `<li><b>${esc(p.label)}</b><span>${esc(p.explanation || '')}</span></li>`).join('');
+    $('next').textContent = roundIdx + 1 < data.rounds.length ? 'Volgende ronde' : 'Bekijk je score';
+    $('result').classList.add('show');
+    $('next').focus();
+  }
+
+  function finish() {
+    tiles.forEach((t) => t.video.pause());
+    const totalMs = history.reduce((s, h) => s + h.ms, 0);
+    const totalMis = history.reduce((s, h) => s + h.mistakes, 0);
+    $('end-stats').textContent = `${history.length} rondes in ${fmt(totalMs)} minuten, met ${totalMis} ${totalMis === 1 ? 'fout' : 'fouten'}.`;
+    $('end-rounds').innerHTML = history.map((h, i) =>
+      `<li><b>Ronde ${i + 1}</b><span>${esc(h.title)}: ${fmt(h.ms)}, ${h.mistakes} ${h.mistakes === 1 ? 'fout' : 'fouten'}</span></li>`).join('');
+    show('end');
+  }
+
+  $('start').addEventListener('click', () => { roundIdx = 0; history.length = 0; startRound(); });
+  $('again').addEventListener('click', () => { roundIdx = 0; history.length = 0; startRound(); });
+  $('next').addEventListener('click', () => {
+    $('result').classList.remove('show');
+    roundIdx++;
+    if (roundIdx < data.rounds.length) startRound(); else finish();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && selected) { selected.el.classList.remove('selected'); selected = null; }
+  });
+})();
+</script>
+</body>
+</html>
