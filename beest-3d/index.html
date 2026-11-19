@@ -135,6 +135,9 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 
+// Added to every data file's address. Raise it whenever the model or textures change, so a browser
+// never combines this page with an older model it still has in its cache.
+const V = '?v=2';
 const HALL = new THREE.Vector3(15, 1, -39);            // middle of the 30 x 78 m hall
 const CORNERS = [0, 30].flatMap((x) => [0, 5.7].flatMap((y) => [0, -78.1].map((z) => new THREE.Vector3(x, y, z))));
 const UP = new THREE.Vector3(0, 1, 0);
@@ -270,8 +273,8 @@ function progress(key, e) {
   const done = Object.values(parts).reduce((a, b) => a + b, 0) / Object.keys(parts).length;
   document.getElementById('progress').style.width = (100 * done) + '%';
 }
-const bakeInfo = fetch('bake.json').then((r) => (r.ok ? r.json() : null)).catch(() => null);
-const atlas = (key) => new Promise((resolve) => new THREE.TextureLoader().load(key + '.webp', (t) => {
+const bakeInfo = fetch('bake.json' + V).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+const atlas = (key) => new Promise((resolve) => new THREE.TextureLoader().load(key + '.webp' + V, (t) => {
   t.flipY = false;                                     // glTF convention, like the model's UVs
   t.colorSpace = THREE.SRGBColorSpace;
   t.channel = 1;                                       // the second UV set is the atlas layout
@@ -282,7 +285,7 @@ const atlas = (key) => new Promise((resolve) => new THREE.TextureLoader().load(k
 }, undefined, () => resolve(null)));
 const atlases = Promise.all(['walls', 'ground', 'rooms'].map(atlas)).then(([walls, ground, rooms]) => ({ walls, ground, rooms }));
 
-new GLTFLoader().setDRACOLoader(draco).load('beest.glb', async (gltf) => {
+new GLTFLoader().setDRACOLoader(draco).load('beest.glb' + V, async (gltf) => {
   const [info, tex] = await Promise.all([bakeInfo, atlases]);
   if (info) renderer.toneMappingExposure = info.exposure * 1.35;
   const baked = {};
@@ -341,7 +344,7 @@ const buttons = [];
 function select(btn) { buttons.forEach((b) => b.setAttribute('aria-pressed', String(b === btn))); }
 
 const list = document.getElementById('walls');
-fetch('walls.json').then((r) => {
+fetch('walls.json' + V).then((r) => {
   if (!r.ok) throw new Error('walls.json: ' + r.status);
   return r.json();
 }).then((walls) => {
