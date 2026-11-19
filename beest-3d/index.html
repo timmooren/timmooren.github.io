@@ -139,7 +139,6 @@ const HALL = new THREE.Vector3(15, 1, -39);            // middle of the 30 x 78 
 const CORNERS = [0, 30].flatMap((x) => [0, 5.7].flatMap((y) => [0, -78.1].map((z) => new THREE.Vector3(x, y, z))));
 const UP = new THREE.Vector3(0, 1, 0);
 const sheet = matchMedia('(max-width: 640px)');        // panel is a bottom sheet instead of a side panel
-const coarse = matchMedia('(pointer: coarse)').matches;
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const panel = document.querySelector('.panel');
 const loading = document.getElementById('loading');
@@ -155,10 +154,8 @@ try {
   throw err;
 }
 renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;    // punchier than three's plain AgX, closer to the renders
+renderer.toneMappingExposure = 0.6;
 document.getElementById('stage').appendChild(renderer.domElement);
 const labelRenderer = new CSS2DRenderer({ element: document.getElementById('labels') });
 
@@ -215,48 +212,114 @@ controls.listenToKeyEvents(window);                    // arrows move, shift + a
 controls.addEventListener('change', () => { dirty = true; });
 controls.update();
 
-scene.add(new THREE.HemisphereLight(0xffffff, 0xb9b0a2, 1.9));
-const sun = new THREE.DirectionalLight(0xfff1dd, 2.4);
-sun.position.set(HALL.x + 40, 70, HALL.z + 28);
-sun.target.position.copy(HALL);
-sun.castShadow = true;
-const shadowSize = coarse || sheet.matches ? 2048 : 4096;
-sun.shadow.mapSize.set(shadowSize, shadowSize);
-Object.assign(sun.shadow.camera, { left: -52, right: 52, top: 52, bottom: -52, near: 1, far: 220 });
-sun.shadow.bias = -0.0004;
-sun.shadow.normalBias = 0.06;
-sun.shadow.autoUpdate = false;                         // nothing moves, so the shadows are drawn once
-scene.add(sun, sun.target);
+// Walls, floor, mats and rooms carry their light in baked textures (see below). These two lights
+// are only for the holds and the people, which are plain coloured meshes; they imitate the sky
+// and sun the bake was lit with.
+scene.add(new THREE.HemisphereLight(0x9ec7ff, 0x6b6258, 3.0));
+const sun = new THREE.DirectionalLight(0xfff2e0, 2.0);
+sun.position.set(0.78, 0.55, 0.3);
+scene.add(sun);
 
-// soft shadow of the building on an otherwise invisible ground
-const ground = new THREE.Mesh(new THREE.CircleGeometry(160, 48), new THREE.ShadowMaterial({ opacity: 0.16 }));
-ground.rotation.x = -Math.PI / 2;
-ground.position.set(HALL.x, -0.05, HALL.z);
-ground.receiveShadow = true;
-scene.add(ground);
+// ---- sharp detail that a baked picture is too coarse for: small repeating textures, drawn here
+function tile(size, metres, draw) {
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const g = c.getContext('2d');
+  g.fillStyle = '#fff';
+  g.fillRect(0, 0, size, size);
+  draw(g, size, size / metres);
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(1 / metres, 1 / metres);                // the meshes' first UV set is in metres
+  t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  return t;
+}
+function grain(g, size, amount) {
+  const img = g.getImageData(0, 0, size, size), d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const v = d[i] * (1 - amount * Math.random());
+    d[i] = d[i + 1] = d[i + 2] = v;
+  }
+  g.putImageData(img, 0, 0);
+}
+const detail = {
+  // plywood sheets of 2.4 x 1.2 m, every other row shifted, with a bolt hole every 20 cm
+  walls: tile(1024, 2.4, (g, n, m) => {
+    g.fillStyle = 'rgba(0,0,0,.4)';
+    for (const [y, x] of [[0, 0], [1.2, 1.2]]) {
+      g.fillRect(0, y * m - 1, n, 2.5);
+      g.fillRect(x * m - 1, y * m, 2.5, 1.2 * m);
+    }
+    g.fillStyle = 'rgba(0,0,0,.82)';
+    for (let i = 0; i < 12; i++) for (let j = 0; j < 12; j++) {
+      g.beginPath();
+      g.arc((i + 0.5) * 0.2 * m, (j + 0.5) * 0.2 * m, 0.0075 * m, 0, 7);
+      g.fill();
+    }
+    grain(g, n, 0.07);
+  }),
+  // fine grain for the carpet mats and the concrete floor
+  ground: tile(512, 1.0, (g, n) => grain(g, n, 0.16)),
+};
 
-// ---- model
+// ---- model and baked textures
 const draco = new DRACOLoader().setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/draco/gltf/');
-new GLTFLoader().setDRACOLoader(draco).load('beest.glb', (gltf) => {
+const parts = { model: 0, walls: 0, ground: 0, rooms: 0 };   // download progress per file, 0..1
+function progress(key, e) {
+  if (e && e.total) parts[key] = e.loaded / e.total;
+  const done = Object.values(parts).reduce((a, b) => a + b, 0) / Object.keys(parts).length;
+  document.getElementById('progress').style.width = (100 * done) + '%';
+}
+const bakeInfo = fetch('bake.json').then((r) => (r.ok ? r.json() : null)).catch(() => null);
+const atlas = (key) => new Promise((resolve) => new THREE.TextureLoader().load(key + '.webp', (t) => {
+  t.flipY = false;                                     // glTF convention, like the model's UVs
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.channel = 1;                                       // the second UV set is the atlas layout
+  t.anisotropy = 4;
+  parts[key] = 1;
+  progress(key);
+  resolve(t);
+}, undefined, () => resolve(null)));
+const atlases = Promise.all(['walls', 'ground', 'rooms'].map(atlas)).then(([walls, ground, rooms]) => ({ walls, ground, rooms }));
+
+new GLTFLoader().setDRACOLoader(draco).load('beest.glb', async (gltf) => {
+  const [info, tex] = await Promise.all([bakeInfo, atlases]);
+  if (info) renderer.toneMappingExposure = info.exposure * 1.35;
+  const baked = {};
   gltf.scene.traverse((o) => {
     if (!o.isMesh) return;
-    const shell = /\(shell\)|Glass/.test(o.material.name);   // outer walls: seen through from outside
-    o.castShadow = !shell && !o.material.transparent;
-    o.receiveShadow = true;
+    // "bake walls", "bake rooms shell", ...: surfaces whose colour and light come from an atlas
+    const [tag, key] = o.material.name.split(' ');
+    if (tag !== 'bake' || !info || !tex[key]) return;
+    const id = o.material.name;
+    if (!baked[id]) {
+      baked[id] = new THREE.MeshBasicMaterial({ map: tex[key], side: o.material.side });
+      baked[id].color.setScalar(info.gain[key]);       // the atlas is stored darker than it is
+      const top = id.endsWith(' top');                 // wall tops have no bolt holes
+      if (detail[key] && !top) baked[id].aoMap = detail[key];   // multiplied over the atlas
+    }
+    o.material = baked[id];
   });
   scene.add(gltf.scene);
   draco.dispose();
-  sun.shadow.needsUpdate = true;
   dirty = true;
   loading.classList.add('done');
   setTimeout(() => { loading.hidden = true; }, 600);   // also takes it out of reach of screen readers
-}, (e) => {
-  if (e.total) document.getElementById('progress').style.width = (100 * e.loaded / e.total) + '%';
-}, () => beestFail('Het model kon niet worden geladen. Probeer de pagina opnieuw te laden.'));
+}, (e) => progress('model', e), () => beestFail('Het model kon niet worden geladen. Probeer de pagina opnieuw te laden.'));
 
 // ---- walls: list, labels and camera moves
 let flight = null;
+let pristine = true;                                   // nobody has moved the view yet
+// Window or panel changed size: recentre, and redo the opening shot as long as it is untouched.
+function refit() {
+  layout();
+  if (!pristine) return;
+  const h = home();
+  camera.position.copy(h.pos);
+  controls.target.copy(h.target);
+}
 function flyTo(pos, target, ms = 900) {
+  pristine = false;
   if (reduceMotion.matches) {                          // no animation: jump straight there
     camera.position.copy(pos);
     controls.target.copy(target);
@@ -272,7 +335,7 @@ function viewWall(w) {
   const away = new THREE.Vector3(HALL.x - w.x, 0, (HALL.z - w.z) * 0.25);
   if (away.length() < 2) away.set(1, 0, 0.3);
   away.normalize();
-  flyTo(target.clone().addScaledVector(away, 15).setY(10), target);   // high enough to see over the wall in front
+  flyTo(target.clone().addScaledVector(away, 16).setY(8), target);   // high enough to see over the wall in front
 }
 const buttons = [];
 function select(btn) { buttons.forEach((b) => b.setAttribute('aria-pressed', String(b === btn))); }
@@ -304,10 +367,7 @@ fetch('walls.json').then((r) => {
     label.position.set(w.x, w.y, w.z);
     scene.add(label);
   }
-  // the panel grew: recentre the view, and redo the opening shot if nobody has moved it yet
-  const untouched = camera.position.distanceTo(start.pos) < 0.05 && controls.target.distanceTo(start.target) < 0.05;
-  layout();
-  if (untouched) { const h = home(); camera.position.copy(h.pos); controls.target.copy(h.target); }
+  refit();                                             // the panel grew: recentre the view
 }).catch(() => {
   const li = document.createElement('li');
   li.className = 'problem';
@@ -323,7 +383,7 @@ toggle.addEventListener('click', () => {
   document.body.classList.toggle('labels-off', !on);
 });
 // taking over by hand stops a camera move and clears the chosen wall
-controls.addEventListener('start', () => { flight = null; select(null); });
+controls.addEventListener('start', () => { flight = null; pristine = false; select(null); });
 
 // + and - zoom from the keyboard
 addEventListener('keydown', (e) => {
@@ -333,11 +393,12 @@ addEventListener('keydown', (e) => {
   const offset = camera.position.clone().sub(controls.target);
   offset.setLength(THREE.MathUtils.clamp(offset.length() * step, controls.minDistance, controls.maxDistance));
   camera.position.copy(controls.target).add(offset);
+  pristine = false;
   dirty = true;
 });
 
-addEventListener('resize', layout);
-sheet.addEventListener('change', layout);
+addEventListener('resize', refit);
+sheet.addEventListener('change', refit);
 
 renderer.setAnimationLoop((now) => {
   if (flight) {

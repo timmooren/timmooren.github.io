@@ -14,10 +14,16 @@ zoom and fly through in the browser. Plain HTML with three.js from a CDN, no bui
 
 - `index.html`: the viewer (orbit controls, wall labels, fly-to per wall)
 - `beest.glb`: the model, Draco-compressed, about 1 MB
+- `walls.webp`, `ground.webp`, `rooms.webp`: baked textures. Colour, paint, chalk and lighting
+  were rendered in Blender into these three pictures, so the browser only has to show them.
+- `bake.json`: how bright each baked texture is meant to be
 - `walls.json`: label positions
 
-The model is built in Blender from a script and exported to `beest.glb`; those sources are
-not in this repository.
+Holds and people are plain coloured meshes. Plywood joints and bolt holes are drawn in the
+browser as a small repeating texture on top of the baked walls, so they stay sharp up close.
+
+The model is built in Blender from a script, baked and exported; those sources are not in this
+repository.
 
 ## Run locally
 
