@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Beest Boulders Amsterdam in 3D</title>
+<meta name="description" content="Onofficieel 3D-model van boulderhal Beest Boulders Amsterdam. Draai, zoom en bekijk elke wand.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%238f1b19'/%3E%3Cpath d='M7 24 13 9l6 8 3-5 3 12z' fill='%23efe7cf'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg-top: #e9e6df; --bg-bottom: #cfcbc2;
+    --ink: #1d1c1a; --ink-soft: #45423c;
+    --panel: rgba(250, 248, 243, .9); --line: rgba(29, 28, 26, .12);
+    --red: #8f1b19; --cream: #efe7cf;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font: 15px/1.4 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--ink); background: linear-gradient(var(--bg-top), var(--bg-bottom)); overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  #stage, #labels { position: fixed; inset: 0; }
+  #stage canvas { display: block; touch-action: none; }
+  #labels { pointer-events: none; }
+
+  .panel {
+    position: fixed; top: 16px; left: max(16px, env(safe-area-inset-left)); width: 232px; padding: 16px 14px 12px;
+    max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); overflow-y: auto;
+    background: var(--panel); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--line); border-radius: 14px;
+  }
+  h1 { margin: 0 2px; font-size: 19px; line-height: 1.15; letter-spacing: -.01em; }
+  .sub { margin: 4px 2px 12px; color: var(--ink-soft); font-size: 13px; }
+  .walls { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+  button {
+    font: inherit; color: inherit; background: none; border: 0; cursor: pointer; text-align: left;
+    width: 100%; min-height: 36px; padding: 7px 8px; border-radius: 8px; display: flex; align-items: center; gap: 9px;
+  }
+  button:hover { background: rgba(29, 28, 26, .07); }
+  button:focus-visible { outline: 2px solid var(--red); outline-offset: 1px; }
+  button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); flex: none; }
+  button[aria-pressed="true"] .dot { background: var(--cream); }
+  .tools { display: flex; gap: 2px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+  .tools button { justify-content: center; font-size: 13px; color: var(--ink-soft); }
+  .tools button[aria-pressed="true"] { color: #fff; }
+  .note { margin: 10px 2px 0; font-size: 12px; line-height: 1.35; color: var(--ink-soft); }
+  .problem { margin: 6px 2px; font-size: 13px; color: var(--red); }
+
+  .wall-label {
+    pointer-events: auto; cursor: pointer; white-space: nowrap; user-select: none; touch-action: none;
+    font-size: 12px; font-weight: 600; letter-spacing: .01em; color: #fff;
+    background: var(--red); padding: 5px 11px 6px; border-radius: 999px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, .25); transition: opacity .2s;
+  }
+  .labels-off .wall-label { opacity: 0; pointer-events: none; }
+
+  .foot {
+    position: fixed; right: 16px; bottom: 14px; font-size: 12px; color: var(--ink-soft); pointer-events: none;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 9px; padding: 5px 9px;
+  }
+
+  #loading {
+    position: fixed; inset: 0; display: grid; place-content: center; gap: 12px; text-align: center; padding: 24px;
+    background: linear-gradient(var(--bg-top), var(--bg-bottom)); transition: opacity .5s;
+  }
+  #loading.done { opacity: 0; pointer-events: none; }
+  #loading[hidden] { display: none; }
+  .bar { width: 200px; height: 4px; border-radius: 2px; background: rgba(29, 28, 26, .15); overflow: hidden; margin: 0 auto; }
+  .bar i { display: block; height: 100%; width: 0; background: var(--red); transition: width .2s; }
+
+  /* short windows (a phone on its side): the panel scrolls, the key hint goes */
+  @media (max-height: 520px) { .foot { display: none; } }
+
+  /* narrow windows: the panel becomes a sheet along the bottom */
+  @media (max-width: 640px) {
+    .panel { top: auto; bottom: 0; left: 0; right: 0; width: auto; max-height: 60vh; border-radius: 14px 14px 0 0;
+             border-width: 1px 0 0; padding: 12px 12px calc(10px + env(safe-area-inset-bottom)); }
+    .sub { margin-bottom: 8px; }
+    /* one row that scrolls sideways; the fade on the right shows there is more */
+    .walls { display: flex; overflow-x: auto; gap: 6px; padding: 0 44px 2px 0; scrollbar-width: none;
+             -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 56px), transparent);
+             mask-image: linear-gradient(to right, #000 calc(100% - 56px), transparent); }
+    .walls::-webkit-scrollbar { display: none; }
+    .walls button { width: auto; min-height: 40px; white-space: nowrap; border: 1px solid var(--line); border-radius: 999px; padding: 8px 13px; }
+    .tools { border: 0; margin-top: 6px; padding-top: 0; }
+    .tools button { min-height: 40px; }
+    .note { margin-top: 6px; font-size: 11px; }
+    .foot { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="labels" aria-hidden="true"></div>
+
+<nav class="panel" aria-label="Wanden">
+  <h1>Beest Boulders Amsterdam</h1>
+  <p class="sub">De hal in 3D. Kies een wand of draai zelf rond.</p>
+  <ul class="walls" id="walls"></ul>
+  <div class="tools">
+    <button id="overview" type="button">Overzicht</button>
+    <button id="toggle-labels" type="button" aria-pressed="true">Labels</button>
+  </div>
+  <p class="note">Onofficieel model op basis van de TopLogger-plattegrond. Wandvormen, grepen en maten zijn een benadering.</p>
+</nav>
+
+<div class="foot">Slepen: draaien · scrollen: zoomen · rechts slepen of pijltjes: schuiven · + en −: zoomen</div>
+
+<div id="loading" role="status">
+  <div class="msg">Model laden…</div>
+  <div class="bar"><i id="progress"></i></div>
+</div>
+
+<script>
+  // Shown when the viewer cannot start at all: the CDN is blocked, the browser has no import maps
+  // or no WebGL, or the model file fails to load.
+  function beestFail(text) {
+    var l = document.getElementById('loading');
+    l.hidden = false;
+    l.classList.remove('done');
+    l.querySelector('.msg').textContent = text;
+    l.querySelector('.bar').hidden = true;
+  }
+</script>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module" onerror="beestFail('De 3D-weergave kon niet worden geladen. Controleer je verbinding of probeer een recentere browser.')">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+const HALL = new THREE.Vector3(15, 1, -39);            // middle of the 30 x 78 m hall
+const CORNERS = [0, 30].flatMap((x) => [0, 5.7].flatMap((y) => [0, -78.1].map((z) => new THREE.Vector3(x, y, z))));
+const UP = new THREE.Vector3(0, 1, 0);
+const sheet = matchMedia('(max-width: 640px)');        // panel is a bottom sheet instead of a side panel
+const coarse = matchMedia('(pointer: coarse)').matches;
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+const panel = document.querySelector('.panel');
+const loading = document.getElementById('loading');
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(38, 1, 0.5, 900);
+
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+} catch (err) {
+  beestFail('Deze browser kan geen 3D tonen (WebGL staat uit of ontbreekt).');
+  throw err;
+}
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.getElementById('stage').appendChild(renderer.domElement);
+const labelRenderer = new CSS2DRenderer({ element: document.getElementById('labels') });
+
+// The panel covers part of the window. `free` is the strip it takes (p px on the left, or q px at
+// the bottom), and the camera's centre is moved to the middle of what is left.
+let free = { p: 0, q: 0 };
+let dirty = true;                                      // something changed: draw a frame
+function layout() {
+  const W = innerWidth, H = innerHeight, r = panel.getBoundingClientRect();
+  free = sheet.matches ? { p: 0, q: Math.round(r.height) } : { p: Math.round(r.right), q: 0 };
+  camera.fov = sheet.matches ? 52 : 38;
+  camera.aspect = (W + free.p) / (H + free.q);
+  camera.setViewOffset(W + free.p, H + free.q, 0, free.q, W, H);
+  camera.updateProjectionMatrix();
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(W, H);
+  labelRenderer.setSize(W, H);
+  dirty = true;
+}
+
+// Overview: the closest camera from which the whole hall fits in the free part of the window.
+function home() {
+  const W = innerWidth, H = innerHeight;
+  const tanV = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  const limX = tanV * (W - free.p) / (H + free.q) * 0.94;
+  const limY = tanV * (H - free.q) / (H + free.q) * 0.88;
+  const tall = (W - free.p) / (H - free.q) < 0.9;      // upright phone: look along the hall, not across it
+  const dir = (tall ? new THREE.Vector3(0.5, 0.8, 1) : new THREE.Vector3(1, 0.72, 0.38)).normalize();
+  const fwd = dir.clone().negate();
+  const right = new THREE.Vector3().crossVectors(fwd, UP).normalize();
+  const up = new THREE.Vector3().crossVectors(right, fwd);
+  const fits = (d) => CORNERS.every((c) => {
+    const v = c.clone().sub(HALL).addScaledVector(dir, -d);
+    const z = v.dot(fwd);
+    return z > 1 && Math.abs(v.dot(right)) <= limX * z && Math.abs(v.dot(up)) <= limY * z;
+  });
+  let lo = 15, hi = 420;
+  for (let i = 0; i < 24; i++) { const mid = (lo + hi) / 2; if (fits(mid)) hi = mid; else lo = mid; }
+  return { pos: HALL.clone().addScaledVector(dir, hi), target: HALL.clone() };
+}
+
+layout();
+const start = home();
+camera.position.copy(start.pos);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.copy(start.target);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.maxPolarAngle = Math.PI * 0.49;
+controls.minDistance = 4;
+controls.maxDistance = 440;
+controls.listenToKeyEvents(window);                    // arrows move, shift + arrows turn
+controls.addEventListener('change', () => { dirty = true; });
+controls.update();
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0xb9b0a2, 1.9));
+const sun = new THREE.DirectionalLight(0xfff1dd, 2.4);
+sun.position.set(HALL.x + 40, 70, HALL.z + 28);
+sun.target.position.copy(HALL);
+sun.castShadow = true;
+const shadowSize = coarse || sheet.matches ? 2048 : 4096;
+sun.shadow.mapSize.set(shadowSize, shadowSize);
+Object.assign(sun.shadow.camera, { left: -52, right: 52, top: 52, bottom: -52, near: 1, far: 220 });
+sun.shadow.bias = -0.0004;
+sun.shadow.normalBias = 0.06;
+sun.shadow.autoUpdate = false;                         // nothing moves, so the shadows are drawn once
+scene.add(sun, sun.target);
+
+// soft shadow of the building on an otherwise invisible ground
+const ground = new THREE.Mesh(new THREE.CircleGeometry(160, 48), new THREE.ShadowMaterial({ opacity: 0.16 }));
+ground.rotation.x = -Math.PI / 2;
+ground.position.set(HALL.x, -0.05, HALL.z);
+ground.receiveShadow = true;
+scene.add(ground);
+
+// ---- model
+const draco = new DRACOLoader().setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/draco/gltf/');
+new GLTFLoader().setDRACOLoader(draco).load('beest.glb', (gltf) => {
+  gltf.scene.traverse((o) => {
+    if (!o.isMesh) return;
+    const shell = /\(shell\)|Glass/.test(o.material.name);   // outer walls: seen through from outside
+    o.castShadow = !shell && !o.material.transparent;
+    o.receiveShadow = true;
+  });
+  scene.add(gltf.scene);
+  draco.dispose();
+  sun.shadow.needsUpdate = true;
+  dirty = true;
+  loading.classList.add('done');
+  setTimeout(() => { loading.hidden = true; }, 600);   // also takes it out of reach of screen readers
+}, (e) => {
+  if (e.total) document.getElementById('progress').style.width = (100 * e.loaded / e.total) + '%';
+}, () => beestFail('Het model kon niet worden geladen. Probeer de pagina opnieuw te laden.'));
+
+// ---- walls: list, labels and camera moves
+let flight = null;
+function flyTo(pos, target, ms = 900) {
+  if (reduceMotion.matches) {                          // no animation: jump straight there
+    camera.position.copy(pos);
+    controls.target.copy(target);
+    flight = null;
+    dirty = true;
+    return;
+  }
+  flight = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: target, start: performance.now(), ms };
+}
+function viewWall(w) {
+  const target = new THREE.Vector3(w.x, 2.2, w.z);
+  // look from the middle aisle of the hall towards the wall, from a little above
+  const away = new THREE.Vector3(HALL.x - w.x, 0, (HALL.z - w.z) * 0.25);
+  if (away.length() < 2) away.set(1, 0, 0.3);
+  away.normalize();
+  flyTo(target.clone().addScaledVector(away, 15).setY(10), target);   // high enough to see over the wall in front
+}
+const buttons = [];
+function select(btn) { buttons.forEach((b) => b.setAttribute('aria-pressed', String(b === btn))); }
+
+const list = document.getElementById('walls');
+fetch('walls.json').then((r) => {
+  if (!r.ok) throw new Error('walls.json: ' + r.status);
+  return r.json();
+}).then((walls) => {
+  const order = ['Blue Whale', 'Training area', 'Croco', 'Bullfrog', 'Spider Monkey', 'Armadillo', 'Lynx', 'Grizzly'];
+  walls.sort((a, b) => order.indexOf(a.name) - order.indexOf(b.name));
+  for (const w of walls) {
+    const li = document.createElement('li');
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.setAttribute('aria-pressed', 'false');
+    btn.innerHTML = '<span class="dot"></span>';
+    btn.append(w.name);
+    btn.addEventListener('click', () => { select(btn); viewWall(w); });
+    li.append(btn);
+    list.append(li);
+    buttons.push(btn);
+
+    const tag = document.createElement('div');
+    tag.className = 'wall-label';
+    tag.textContent = w.name;
+    tag.addEventListener('click', () => { select(btn); viewWall(w); });
+    const label = new CSS2DObject(tag);
+    label.position.set(w.x, w.y, w.z);
+    scene.add(label);
+  }
+  // the panel grew: recentre the view, and redo the opening shot if nobody has moved it yet
+  const untouched = camera.position.distanceTo(start.pos) < 0.05 && controls.target.distanceTo(start.target) < 0.05;
+  layout();
+  if (untouched) { const h = home(); camera.position.copy(h.pos); controls.target.copy(h.target); }
+}).catch(() => {
+  const li = document.createElement('li');
+  li.className = 'problem';
+  li.textContent = 'De lijst met wanden kon niet worden geladen.';
+  list.append(li);
+});
+
+document.getElementById('overview').addEventListener('click', () => { select(null); const h = home(); flyTo(h.pos, h.target); });
+const toggle = document.getElementById('toggle-labels');
+toggle.addEventListener('click', () => {
+  const on = toggle.getAttribute('aria-pressed') !== 'true';
+  toggle.setAttribute('aria-pressed', String(on));
+  document.body.classList.toggle('labels-off', !on);
+});
+// taking over by hand stops a camera move and clears the chosen wall
+controls.addEventListener('start', () => { flight = null; select(null); });
+
+// + and - zoom from the keyboard
+addEventListener('keydown', (e) => {
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  const step = e.key === '+' || e.key === '=' ? 0.85 : e.key === '-' || e.key === '_' ? 1 / 0.85 : 0;
+  if (!step) return;
+  const offset = camera.position.clone().sub(controls.target);
+  offset.setLength(THREE.MathUtils.clamp(offset.length() * step, controls.minDistance, controls.maxDistance));
+  camera.position.copy(controls.target).add(offset);
+  dirty = true;
+});
+
+addEventListener('resize', layout);
+sheet.addEventListener('change', layout);
+
+renderer.setAnimationLoop((now) => {
+  if (flight) {
+    const k = Math.min(1, Math.max(0, (now - flight.start) / flight.ms));
+    const e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+    camera.position.lerpVectors(flight.p0, flight.p1, e);
+    controls.target.lerpVectors(flight.t0, flight.t1, e);
+    if (k === 1) flight = null;
+    dirty = true;
+  }
+  controls.update();                                   // fires 'change' while the view is still moving
+  if (!dirty) return;                                  // idle: draw nothing
+  dirty = false;
+  renderer.render(scene, camera);
+  labelRenderer.render(scene, camera);
+});
+</script>
+</body>
+</html>
