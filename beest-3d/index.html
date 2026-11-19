@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Beest Boulders Amsterdam in 3D</title>
+<meta name="description" content="Onofficieel 3D-model van boulderhal Beest Boulders Amsterdam. Draai, zoom en bekijk elke wand.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%238f1b19'/%3E%3Cpath d='M7 24 13 9l6 8 3-5 3 12z' fill='%23efe7cf'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg-top: #e9e6df; --bg-bottom: #cfcbc2;
+    --ink: #1d1c1a; --ink-soft: #45423c;
+    --panel: rgba(250, 248, 243, .86); --line: rgba(29, 28, 26, .12);
+    --red: #8f1b19; --cream: #efe7cf;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font: 15px/1.4 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--ink); background: linear-gradient(var(--bg-top), var(--bg-bottom)); overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  #stage, #labels { position: fixed; inset: 0; }
+  #stage canvas { display: block; touch-action: none; }
+  #labels { pointer-events: none; }
+
+  .panel {
+    position: fixed; top: 16px; left: 16px; width: 232px; padding: 16px 14px 12px;
+    background: var(--panel); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--line); border-radius: 14px;
+  }
+  h1 { margin: 0 2px; font-size: 19px; line-height: 1.15; letter-spacing: -.01em; }
+  .sub { margin: 4px 2px 12px; color: var(--ink-soft); font-size: 13px; }
+  .walls { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+  button {
+    font: inherit; color: inherit; background: none; border: 0; cursor: pointer; text-align: left;
+    width: 100%; padding: 7px 8px; border-radius: 8px; display: flex; align-items: center; gap: 9px;
+  }
+  button:hover { background: rgba(29, 28, 26, .07); }
+  button:focus-visible { outline: 2px solid var(--red); outline-offset: 1px; }
+  button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); flex: none; }
+  button[aria-pressed="true"] .dot { background: var(--cream); }
+  .tools { display: flex; gap: 2px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+  .tools button { justify-content: center; font-size: 13px; color: var(--ink-soft); }
+  .tools button[aria-pressed="true"] { color: #fff; }
+
+  .wall-label {
+    pointer-events: auto; cursor: pointer; white-space: nowrap; user-select: none;
+    font-size: 12px; font-weight: 600; letter-spacing: .01em; color: #fff;
+    background: var(--red); padding: 3px 9px 4px; border-radius: 999px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, .25); transition: opacity .2s;
+  }
+  .labels-off .wall-label { opacity: 0; pointer-events: none; }
+
+  .foot {
+    position: fixed; left: 16px; bottom: 14px; right: 16px; font-size: 12px; color: var(--ink-soft);
+    display: flex; justify-content: space-between; gap: 16px; pointer-events: none;
+  }
+  .foot span { background: var(--panel); border: 1px solid var(--line); border-radius: 9px; padding: 5px 9px; align-self: flex-end; }
+  .foot span:last-child { text-align: right; max-width: 50ch; }
+
+  #loading {
+    position: fixed; inset: 0; display: grid; place-content: center; gap: 12px; text-align: center;
+    background: linear-gradient(var(--bg-top), var(--bg-bottom)); transition: opacity .5s;
+  }
+  #loading.done { opacity: 0; pointer-events: none; }
+  .bar { width: 200px; height: 4px; border-radius: 2px; background: rgba(29, 28, 26, .15); overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 0; background: var(--red); transition: width .2s; }
+
+  @media (max-width: 640px) {
+    .panel { top: auto; bottom: 0; left: 0; right: 0; width: auto; border-radius: 14px 14px 0 0;
+             border-width: 1px 0 0; padding: 12px 12px calc(10px + env(safe-area-inset-bottom)); }
+    .sub { margin-bottom: 8px; }
+    .walls { display: flex; overflow-x: auto; gap: 6px; padding-bottom: 2px; scrollbar-width: none; }
+    .walls button { width: auto; white-space: nowrap; border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; }
+    .tools { border: 0; margin-top: 6px; padding-top: 0; }
+    .foot { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="labels"></div>
+
+<nav class="panel" aria-label="Wanden">
+  <h1>Beest Boulders Amsterdam</h1>
+  <p class="sub">De hal in 3D. Kies een wand of draai zelf rond.</p>
+  <ul class="walls" id="walls"></ul>
+  <div class="tools">
+    <button id="overview" type="button">Overzicht</button>
+    <button id="toggle-labels" type="button" aria-pressed="true">Labels</button>
+  </div>
+</nav>
+
+<div class="foot">
+  <span>Slepen: draaien · scrollen: zoomen · rechts slepen: schuiven</span>
+  <span>Onofficieel model op basis van de TopLogger-plattegrond. Wandvormen, grepen en maten zijn een benadering.</span>
+</div>
+
+<div id="loading" role="status">
+  <div>Model laden…</div>
+  <div class="bar"><i id="progress"></i></div>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+const HALL = new THREE.Vector3(15, 1, -39);            // middle of the 30 x 78 m hall
+const small = matchMedia('(max-width: 640px)').matches;
+const FOV = small ? 52 : 38;
+// Overview: far enough back that the 78 m long hall fits the width of the window.
+function home() {
+  const aspect = innerWidth / innerHeight;
+  const halfWidth = Math.atan(Math.tan(THREE.MathUtils.degToRad(FOV / 2)) * aspect);
+  const tall = aspect < 0.9;      // phone held upright: look along the hall instead of across it
+  const dist = Math.min(tall ? 125 : 150, (tall ? 30 : 43) / Math.tan(halfWidth));
+  const dir = (tall ? new THREE.Vector3(0.5, 0.8, 1) : new THREE.Vector3(1, 0.72, 0.38)).normalize();
+  return { pos: HALL.clone().addScaledVector(dir, dist), target: HALL.clone() };
+}
+const HOME = home();
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(FOV, innerWidth / innerHeight, 0.5, 600);
+camera.position.copy(HOME.pos);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.getElementById('stage').appendChild(renderer.domElement);
+
+const labelRenderer = new CSS2DRenderer({ element: document.getElementById('labels') });
+labelRenderer.setSize(innerWidth, innerHeight);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.copy(HOME.target);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.maxPolarAngle = Math.PI * 0.49;
+controls.minDistance = 4;
+controls.maxDistance = 170;
+controls.update();
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0xb9b0a2, 1.9));
+const sun = new THREE.DirectionalLight(0xfff1dd, 2.4);
+sun.position.set(HALL.x + 40, 70, HALL.z + 28);
+sun.target.position.copy(HALL);
+sun.castShadow = true;
+sun.shadow.mapSize.set(small ? 2048 : 4096, small ? 2048 : 4096);
+Object.assign(sun.shadow.camera, { left: -52, right: 52, top: 52, bottom: -52, near: 1, far: 220 });
+sun.shadow.bias = -0.0004;
+sun.shadow.normalBias = 0.06;
+scene.add(sun, sun.target);
+
+// soft shadow of the building on an otherwise invisible ground
+const ground = new THREE.Mesh(new THREE.CircleGeometry(160, 48), new THREE.ShadowMaterial({ opacity: 0.16 }));
+ground.rotation.x = -Math.PI / 2;
+ground.position.set(HALL.x, -0.05, HALL.z);
+ground.receiveShadow = true;
+scene.add(ground);
+
+// ---- model
+const draco = new DRACOLoader().setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/draco/gltf/');
+const loading = document.getElementById('loading');
+new GLTFLoader().setDRACOLoader(draco).load('beest.glb', (gltf) => {
+  gltf.scene.traverse((o) => {
+    if (!o.isMesh) return;
+    const shell = /\(shell\)|Glass/.test(o.material.name);   // outer walls: seen through from outside
+    o.castShadow = !shell && !o.material.transparent;
+    o.receiveShadow = true;
+  });
+  scene.add(gltf.scene);
+  loading.classList.add('done');
+}, (e) => {
+  if (e.total) document.getElementById('progress').style.width = (100 * e.loaded / e.total) + '%';
+}, () => { loading.firstElementChild.textContent = 'Het model kon niet worden geladen.'; });
+
+// ---- walls: list, labels and camera moves
+let flight = null;
+function flyTo(pos, target, ms = 900) {
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  flight = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: target, start: performance.now(), ms: reduce ? 1 : ms };
+}
+function viewWall(w) {
+  const target = new THREE.Vector3(w.x, 2.2, w.z);
+  // look from the middle aisle of the hall towards the wall, from a little above
+  const away = new THREE.Vector3(HALL.x - w.x, 0, (HALL.z - w.z) * 0.25);
+  if (away.length() < 2) away.set(1, 0, 0.3);
+  away.normalize();
+  flyTo(target.clone().addScaledVector(away, 17).setY(6.5), target);
+}
+const buttons = [];
+function select(btn) { buttons.forEach((b) => b.setAttribute('aria-pressed', String(b === btn))); }
+
+fetch('walls.json').then((r) => r.json()).then((walls) => {
+  const order = ['Blue Whale', 'Training area', 'Croco', 'Bullfrog', 'Spider Monkey', 'Armadillo', 'Lynx', 'Grizzly'];
+  walls.sort((a, b) => order.indexOf(a.name) - order.indexOf(b.name));
+  const list = document.getElementById('walls');
+  for (const w of walls) {
+    const li = document.createElement('li');
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.setAttribute('aria-pressed', 'false');
+    btn.innerHTML = '<span class="dot"></span>';
+    btn.append(w.name);
+    btn.addEventListener('click', () => { select(btn); viewWall(w); });
+    li.append(btn);
+    list.append(li);
+    buttons.push(btn);
+
+    const tag = document.createElement('div');
+    tag.className = 'wall-label';
+    tag.textContent = w.name;
+    tag.addEventListener('click', () => { select(btn); viewWall(w); });
+    const label = new CSS2DObject(tag);
+    label.position.set(w.x, w.y, w.z);
+    scene.add(label);
+  }
+});
+
+document.getElementById('overview').addEventListener('click', () => { select(null); const h = home(); flyTo(h.pos, h.target); });
+const toggle = document.getElementById('toggle-labels');
+toggle.addEventListener('click', () => {
+  const on = toggle.getAttribute('aria-pressed') !== 'true';
+  toggle.setAttribute('aria-pressed', String(on));
+  document.body.classList.toggle('labels-off', !on);
+});
+controls.addEventListener('start', () => { flight = null; });
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+  labelRenderer.setSize(innerWidth, innerHeight);
+});
+
+renderer.setAnimationLoop((now) => {
+  if (flight) {
+    const k = Math.min(1, (now - flight.start) / flight.ms);
+    const e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+    camera.position.lerpVectors(flight.p0, flight.p1, e);
+    controls.target.lerpVectors(flight.t0, flight.t1, e);
+    if (k === 1) flight = null;
+  }
+  controls.update();
+  renderer.render(scene, camera);
+  labelRenderer.render(scene, camera);
+});
+</script>
+</body>
+</html>
