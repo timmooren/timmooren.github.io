@@ -137,7 +137,7 @@ import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer
 
 // Added to every data file's address. Raise it whenever the model or textures change, so a browser
 // never combines this page with an older model it still has in its cache.
-const V = '?v=2';
+const V = '?v=6';
 const HALL = new THREE.Vector3(15, 1, -39);            // middle of the 30 x 78 m hall
 const CORNERS = [0, 30].flatMap((x) => [0, 5.7].flatMap((y) => [0, -78.1].map((z) => new THREE.Vector3(x, y, z))));
 const UP = new THREE.Vector3(0, 1, 0);
@@ -333,6 +333,7 @@ function flyTo(pos, target, ms = 900) {
   flight = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: target, start: performance.now(), ms };
 }
 function viewWall(w) {
+  if (w.view) return flyTo(new THREE.Vector3(...w.view.pos), new THREE.Vector3(...w.view.target));   // own viewpoint
   const target = new THREE.Vector3(w.x, 2.2, w.z);
   // look from the middle aisle of the hall towards the wall, from a little above
   const away = new THREE.Vector3(HALL.x - w.x, 0, (HALL.z - w.z) * 0.25);
@@ -348,7 +349,7 @@ fetch('walls.json' + V).then((r) => {
   if (!r.ok) throw new Error('walls.json: ' + r.status);
   return r.json();
 }).then((walls) => {
-  const order = ['Blue Whale', 'Training area', 'Croco', 'Bullfrog', 'Spider Monkey', 'Armadillo', 'Lynx', 'Grizzly'];
+  const order = ['Blue Whale', 'Gym', 'Croco', 'Bullfrog', 'Spider Monkey', 'Armadillo', 'Lynx', 'Grizzly'];
   walls.sort((a, b) => order.indexOf(a.name) - order.indexOf(b.name));
   for (const w of walls) {
     const li = document.createElement('li');
